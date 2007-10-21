@@ -94,11 +94,14 @@ class Suite(object):
         if handle_ta:
             db.commit()
 
-    def select(cls, ws, db=None):
+    def select(cls, ws, type=None, db=None):
         if not db:
             db = ws.get_db_cnx()
         cursor = db.cursor()
-        cursor.execute("SELECT name,type,url,comp FROM suite")
+        if not type:
+            cursor.execute("SELECT name,type,url,comp FROM suite")
+        else:
+            cursor.execute("SELECT name,type,url,comp FROM suite WHERE type=%d" % type)
         suites = []
         for name, type, url, comp in cursor:
             suite = cls(ws)

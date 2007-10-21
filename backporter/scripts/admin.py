@@ -15,18 +15,10 @@ import urllib
 import locale
 
 import backporter
-# from trac import perm, util, db_default
-# from trac.config import default_dir
-# from trac.core import TracError
 from backporter.ws import Workspace
-# from trac.perm import PermissionSystem
 from backporter.backport import *
 from backporter.build import Builder
 from backporter.suite import *
-# from trac.util.html import html
-# from trac.util.text import to_unicode, wrap
-# from trac.wiki import WikiPage
-# from trac.wiki.macros import WikiMacroBase
 
 class BackporterAdmin(cmd.Cmd):
     intro = ''
@@ -176,11 +168,11 @@ class BackporterAdmin(cmd.Cmd):
 
     
     ## About / Version
-    _help_about = [('about', 'Shows information about trac-admin')]
+    _help_about = [('about', 'Shows information about backporter-admin')]
 
     def do_about(self, line):
         print
-        print 'Trac Admin Console %s' % trac.__version__
+        print 'Backporter Admin Console %s' % backporter.__version__
         print '================================================================='
         print self.license
 
@@ -272,11 +264,9 @@ class BackporterAdmin(cmd.Cmd):
             b = Builder(s)
             b.create()
         else:
-            for s in Suite.select(ws):
+            for s in Suite.select(ws, SuiteType.Released.Value):
                 b = Builder(s)
                 b.create()
-                print s.name
-#                s.builder.create()
 
     ## Backport
     _help_backport = [('backport list', 'Show backports'),

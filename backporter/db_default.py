@@ -18,8 +18,8 @@ schema = [
         Column('type', type='int'),
         Column('url'),
         Column('comp')],
-    Table('backport', key=('package'))[
-        Column('package'),
+    Table('package', key=('name'))[
+        Column('name'),
         Column('status', type='int')],
     Table('version', key=('package', 'suite'))[
         Column('package'),

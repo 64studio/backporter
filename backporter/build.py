@@ -8,7 +8,7 @@ import os
 import string
 
 from backporter.utils import *
-from backporter.suite import *
+from backporter.suite import SuiteType
 
 __all__ = ['Builder']
 
@@ -31,7 +31,8 @@ class Builder:
     def create(self):
         for arch in self.suite.ws.archs:
             if os.path.isfile(self._get_chroot_file(arch)):
-                raise BackporterError, 'Chroot already exists at %s' % self._get_build_dir()
+                print 'W: Skipping %s, chroot already exists' % self.suite.name
+                continue
             self._gen_config_file(arch)
             self._create_chroot(arch)
 
