@@ -4,6 +4,15 @@
 # All rights reserved.
 #
 
+class BackporterError(Exception):
+    """Exception base class for errors in Trac."""
+
+    def __init__(self, message, title=None, show_traceback=False):
+        Exception.__init__(self, message)
+        self.message = message
+        self.title = title
+        self.show_traceback = show_traceback
+
 def Enum(*names):
    ##assert names, "Empty enums are not supported" # <- Don't like empty enums? Uncomment!
 
@@ -56,3 +65,14 @@ if __name__ == '__main__':
    Confirmation = Enum('No', 'Yes')
    answer = Confirmation.No
    print 'Your answer is not', ~answer
+
+def write_data(filename, data):
+    try:
+        fileobj = file(filename, 'w')
+        try:
+            fileobj.write(data)
+            fileobj.close()
+        finally:
+            fileobj.close()
+    except IOError, e:
+        self.log.warn('Couldn\'t write to file (%s)', e, exc_info=True)

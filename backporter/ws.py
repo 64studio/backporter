@@ -9,6 +9,8 @@ import ConfigParser
 import string
 from backporter import db_default
 from backporter.db import *
+from backporter.utils import *
+from backporter.suite import *
 
 __all__ = ['Workspace']
 
@@ -25,7 +27,8 @@ class Workspace:
         else:
             self.verify()
 
-
+        # TODO these should be configurable
+        self.archs = ['i386']
 
     def create(self):
         """Create the basic directory structure of the workspace, initialize
@@ -38,9 +41,10 @@ class Workspace:
         # Create the directory structure
         if not os.path.exists(self.path):
             os.mkdir(self.path)
-        os.mkdir(self.get_log_dir())
+        os.mkdir(self.get_repo_dir())
         os.mkdir(self.get_build_dir())
         os.mkdir(self.get_apt_dir())
+        os.mkdir(os.path.join(self.get_apt_dir(),'partial'))
 
         # Setup the default configuration
         os.mkdir(os.path.join(self.path, 'conf'))
@@ -59,9 +63,52 @@ class Workspace:
 
         self._update_sample_config()
 
-    def get_log_dir(self):
-        """Return absolute path to the log directory."""
-        return os.path.join(self.path, 'log')
+    def update(self):
+        """Update APT lists"""
+        self._gen_apt_conf()
+
+    def _gen_apt_conf(self):
+        sources = []
+        for s in Suite.select(self):
+            sources.append('deb %s %s %s' % (s.url, s.name, s.comp))
+        write_data(os.path.join(self.get_apt_dir(),'sources.list'), "\n".join(sources))
+
+        config = (('APT',
+                   (('Get',
+                     ['Only-Source "true"']),
+                    ('GPGV',
+                     ['TrustedKeyring "/etc/apt/trusted.gpg"']))),
+                  ('Dir "%s"' % self.get_apt_dir(),
+                   (('State "%s"' % self.get_apt_dir(),
+                     ['Lists "%s"' % self.get_apt_dir(),
+                      'xstatus "xstatus"',
+                      'userstatus "status.user"',
+                      'status "%s"' % (self.get_apt_dir() + 'status'),
+                      'cdroms "cdroms.list"']),
+                    ('Etc "%s"' % self.get_apt_dir(),
+                     ['SourceList "sources.list"',
+                      'Main "apt.conf"',
+                      'Preferences "preferences"',
+                      'Parts "apt.conf.d/"']),
+                    ('Cache "%s"' % self.get_apt_dir(),
+                     ['Archives "%s"' % self.get_apt_dir(),
+                      'srcpkgcache "srcpkgcache.bin"',
+                      'pkgcache "pkgcache.bin"'])))
+                  )
+        lines = []
+        for topl, midl in config:
+            lines.append('%s\n{' % topl)
+            for key, value in midl:
+                lines.append('  %s\n  {\n    %s;\n  };' % (key,";\n    ".join(value)))
+            lines.append('};')
+        lines.append('quiet "0";');
+        lines.append('APT::Cache-Limit "26777216";')
+
+        write_data(os.path.join(self.get_apt_dir(),'apt.conf'), "\n".join(lines))
+
+    def get_repo_dir(self):
+        """Return absolute path to the repo directory."""
+        return os.path.join(self.path, 'repo')
 
     def get_build_dir(self):
         """Return absolute path to the build directory."""
@@ -102,9 +149,9 @@ class Workspace:
         config = ConfigParser()
 
         sample = (
-            ('distributions',
-             {'debian':'http://ftp.debian.org/debian',
-              'ubuntu':'http://archive.ubuntu.com/ubuntu'}),
+            ('pbuilder',
+             {'root-command':'sudo',
+              'foo':0}),
             ('options', {'foo':'b'}))
 
         for section, options in sample:

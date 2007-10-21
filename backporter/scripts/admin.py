@@ -21,6 +21,7 @@ import backporter
 from backporter.ws import Workspace
 # from trac.perm import PermissionSystem
 from backporter.backport import *
+from backporter.build import Builder
 from backporter.suite import *
 # from trac.util.html import html
 # from trac.util.text import to_unicode, wrap
@@ -48,7 +49,7 @@ class BackporterAdmin(cmd.Cmd):
         self._permsys = None
 
     def onecmd(self, line):
-        cmd.Cmd.onecmd(self, line)
+        cmd.Cmd.onecmd(self, line) ### ENABLE DEBUG
         return 0
         """`line` may be a `str` or an `unicode` object"""
         try:
@@ -224,8 +225,9 @@ class BackporterAdmin(cmd.Cmd):
             traceback.print_exc()
             return 2
 
-    ## Backport
-    _help_suite = [('suite list', 'Show suites'),
+    ## Suite
+    _help_suite = [('suite list', 'Show suites'), ('suite chroot [<suite>]', 'Creates build chroot'),
+                   ('suite update', 'Update APT lists'),
                    ('suite add <name> <type> <url> <components>', 'Add suite')]
 
     def do_suite(self, line):
@@ -234,16 +236,21 @@ class BackporterAdmin(cmd.Cmd):
             self._do_suite_list()
         elif arg[0] == 'add' and len(arg) >= 5:
             self._do_suite_add(arg[1], arg[2], arg[3], " ".join(arg[4:]))
-            if len(arg) == 3:
-                self._do_suite_time(arg[1], arg[2])
+        elif arg[0] == 'chroot' and len(arg) in [1,2]:
+            if len(arg) == 1:
+                self._do_suite_chroot()
+            else:
+                self._do_suite_chroot(arg[1])
+        elif arg[0]  == 'update':
+            self._do_suite_update()
         else:
             self.do_help('suite')
 
     def _do_suite_list(self):
         data = []
 
-        for b in Suite.select(self.ws_open()):
-            data.append((b.name, SuiteType[b.type], b.url, b.comp))
+        for s in Suite.select(self.ws_open()):
+            data.append((s.name, SuiteType[s.type], s.url, s.comp))
         self.print_listing(['Name', 'Type', 'Url','Components'], data)
 
     def _do_suite_add(self, name, type, url, comp):
@@ -253,6 +260,23 @@ class BackporterAdmin(cmd.Cmd):
         suite.url  = url
         suite.comp = comp
         suite.insert()
+
+    def _do_suite_update(self):
+        self.ws_open().update()
+
+    def _do_suite_chroot(self, name=None):
+
+        ws = self.ws_open()
+        if name:
+            s = Suite(ws, name)
+            b = Builder(s)
+            b.create()
+        else:
+            for s in Suite.select(ws):
+                b = Builder(s)
+                b.create()
+                print s.name
+#                s.builder.create()
 
     ## Backport
     _help_backport = [('backport list', 'Show backports'),
@@ -275,7 +299,9 @@ class BackporterAdmin(cmd.Cmd):
     def _do_backport_list(self):
         data = []
         ws = self.ws_open()
-        print ws.get_db_cnx()
+        s = Suite(ws, 'etch')
+        builder = Builder(ws,s)
+        builder.create()
         return
         con = ws.get_db_cnx()
         cur = con.cursor()
@@ -308,7 +334,6 @@ class BackporterAdmin(cmd.Cmd):
 def run(args):
     """Main entry point."""
     admin = BackporterAdmin()
-
     if len(args) > 0:
         if args[0] in ('-h', '--help', 'help'):
             return admin.onecmd("help")

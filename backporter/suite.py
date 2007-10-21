@@ -5,6 +5,7 @@
 #
 
 from backporter.utils import *
+
 __all__ = ['Suite', 'SuiteType']
 
 # HACK: Use Dummy as unicode doesn't like to print 0
@@ -19,8 +20,7 @@ class Suite(object):
                 db = self.ws.get_db_cnx()
 
             cursor = db.cursor()
-            cursor.execute("SELECT type,url,comp FROM suite "
-                           "WHERE name=%s", (name,))
+            cursor.execute("SELECT type,url,comp FROM suite WHERE name='%s'" % (name))
             row = cursor.fetchone()
             if not row:
                 raise BackporterError, 'Suite %s does not exist.' % name

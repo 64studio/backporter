@@ -37,10 +37,12 @@ schema = [
         Column('value')],
 ]
 
+url = {'debian':'http://ftp.debian.org/debian'}
+
 data = (('suite',
          ('name','type','url','comp'),
-         (('etch',SuiteType.Released.Value,'http://','main'),
-          ('sid',SuiteType.Bleeding.Value,'http://','main'))),
+         (('etch',SuiteType.Released.Value,url['debian'],'main contrib non-free'),
+          ('sid' ,SuiteType.Bleeding.Value,url['debian'],'main contrib non-free'))),
         ('enum',
          ('type', 'name', 'value'),
          (('status', 'new', 1),('status', 'old', 0)))
