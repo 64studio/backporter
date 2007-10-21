@@ -6,11 +6,6 @@ import re
 import sys
 import time
 
-#from trac.attachment import Attachment
-#from trac.core import TracError
-#from trac.ticket import TicketSystem
-#from trac.util import sorted, embedded_numbers
-
 __all__ = ['Backport']
 
 class Backport(object):
@@ -21,8 +16,7 @@ class Backport(object):
             if not db:
                 db = self.ws.get_db_cnx()
             cursor = db.cursor()
-            cursor.execute("SELECT time,description FROM version "
-                           "WHERE name=%s", (name,))
+            cursor.execute('SELECT status FROM backport WHERE name=%s', (name,))
             row = cursor.fetchone()
             if not row:
                 raise TracError, 'Version %s does not exist.' % name
