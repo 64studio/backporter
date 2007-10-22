@@ -16,7 +16,7 @@ import locale
 
 import backporter
 from backporter.ws import Workspace
-from backporter.backport import *
+from backporter.package import *
 from backporter.build import Builder
 from backporter.suite import *
 
@@ -268,57 +268,36 @@ class BackporterAdmin(cmd.Cmd):
                 b = Builder(s)
                 b.create()
 
-    ## Backport
-    _help_backport = [('backport list', 'Show backports'),
-                       ('backport add <pkg>', 'Add backport'),
-                       ('backport remove <pkg>', 'Remove backport')]
+    ## Package
+    _help_package = [('package list', 'Show packages'),
+                       ('package add <pkg>', 'Add package'),
+                       ('package remove <pkg>', 'Remove package')]
 
-    def do_backport(self, line):
+    def do_package(self, line):
         arg = self.arg_tokenize(line)
         if arg[0]  == 'list':
-            self._do_backport_list()
-        elif arg[0] == 'add' and len(arg) in [2,3]:
-            self._do_backport_add(arg[1])
-            if len(arg) == 3:
-                self._do_backport_time(arg[1], arg[2])
+            self._do_package_list()
+        elif arg[0] == 'add' and len(arg) == 2:
+            self._do_package_add(arg[1])
         elif arg[0] == 'remove' and len(arg) == 2:
-            self._do_backport_remove(arg[1])
+            self._do_package_remove(arg[1])
         else:
-            self.do_help('backport')
+            self.do_help('package')
 
-    def _do_backport_list(self):
+    def _do_package_list(self):
         data = []
-        ws = self.ws_open()
-        s = Suite(ws, 'etch')
-        builder = Builder(ws,s)
-        builder.create()
-        return
-        con = ws.get_db_cnx()
-        cur = con.cursor()
-        cur.execute("drop table suite")
-        cur.execute("create table suite(name text, type integer, url text, comp text)")
-        cur.execute("insert into suite values('sid',0,'http://ftp.debian.org/debian','main contrib non-free')")
-        cur.execute("insert into suite values('etch',1,'http://ftp.debian.org/debian','main contrib non-free')")
-        cur.execute("select * from suite")
-        print cur.fetchall()
-        con.commit()
-#        print row[0]
-#        for (suite, type) in cur:
-#            print 'suite %s is %d.' % (suite, type)
-        return
+        for p in Package.select(self.ws_open()):
+            data.append((p.name, PackageStatus[p.status]))
+        self.print_listing(['Name', 'Status'], data)
 
-        for b in Backport.select(self.ws_open()):
-            data.append(b.name)
-        self.print_listing(['Name', 'Time'], data)
+    def _do_package_add(self, name):
+        package = Package(self.ws_open())
+        package.name = name
+        package.insert()
 
-    def _do_backport_add(self, name):
-        backport = Backport(self.env_open())
-        backport.name = name
-        backport.insert()
-
-    def _do_backport_remove(self, name):
-        backport = Backport(self.env_open(), name)
-        backport.delete()
+    def _do_package_remove(self, name):
+        package = Package(self.ws_open(), name)
+        package.delete()
 
 
 def run(args):

@@ -1,17 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright (C) 2007 Ekanayaka Free
-# All rights reserved.
-#
-
 import os
 from pysqlite2 import dbapi2 as sqlite
-
-from backporter.suite import SuiteType
-
-##
-## Database schema
-##
 
 class Table(object):
     """Declare a table in a database schema."""
@@ -47,37 +35,6 @@ class Index(object):
     def __init__(self, columns):
         self.columns = columns
 
-schema = [
-    # Common
-    Table('suite', key='name')[
-        Column('name'),
-        Column('type', type='int'),
-        Column('url'),
-        Column('comp')],
-    Table('backport', key=('package'))[
-        Column('package'),
-        Column('status', type='int')],
-    Table('version', key=('package', 'suite'))[
-        Column('package'),
-        Column('suite'),
-        Column('version'),
-        Column('time', type='int')],
-    Table('build', key=('package', 'suite', 'arch','action'))[
-        Column('package'),
-        Column('suite'),
-        Column('arch'),
-        Column('action')],
-    Table('enum', key=('type', 'name'))[
-        Column('type'),
-        Column('name'),
-        Column('value')],
-]
-
-##
-## Database class
-##
-
-
 class Database:
 
     def __init__(self, ws):
@@ -94,6 +51,7 @@ class Database:
         os.makedirs(os.path.split(self.path)[0])
         cnx = self.get_connection()
         cursor = cnx.cursor()
+        from backporter.db_default import schema
         for table in schema:
             for stmt in self.to_sql(table):
                 cursor.execute(stmt)

@@ -7,13 +7,19 @@
 import os
 import ConfigParser
 import string
+import re
+
 from backporter import db_default
 from backporter.db import *
 from backporter.utils import *
 from backporter.suite import *
+from backporter.package import *
 
 __all__ = ['Workspace']
 
+class Log:
+    def debug(self,text):
+        print 'D: %s' % text
 
 class Workspace:
 
@@ -21,6 +27,7 @@ class Workspace:
 
         self.path = path
         self.db = Database(self)
+        self.log = Log()
 
         if create:
             self.create()
@@ -44,6 +51,10 @@ class Workspace:
         os.mkdir(self.get_repo_dir())
         os.mkdir(self.get_build_dir())
         os.mkdir(self.get_apt_dir())
+        os.mkdir(os.path.join(self.get_apt_dir(),'lists'))
+        os.mkdir(os.path.join(self.get_apt_dir(),'lists','partial'))
+        fd = open(os.path.join(self.get_apt_dir(), 'status'), 'w')
+        fd.close()
         os.mkdir(os.path.join(self.get_apt_dir(),'partial'))
 
         # Setup the default configuration
@@ -66,11 +77,22 @@ class Workspace:
     def update(self):
         """Update APT lists"""
         self._gen_apt_conf()
+#        os.system('apt-get update -c %s' %  os.path.join(self.get_apt_dir(),'apt.conf'))
+        r = re.compile(' *([^ ]*)[ \|]*([^ ]*)[ \|]*[^ ]* *([^/]*)')
+        for p in Package.select(self):
+            madison = os.popen('apt-cache -c %s madison %s' %  (os.path.join(self.get_apt_dir(),'apt.conf'), p.name))
+            for line in madison.readlines():
+                m = r.match(line)
+                v = Version(self)
+                v.package = p.name
+                v.suite   = m.group(3)
+                v.value   = m.group(2)
+                v.update()
 
     def _gen_apt_conf(self):
         sources = []
         for s in Suite.select(self):
-            sources.append('deb %s %s %s' % (s.url, s.name, s.comp))
+            sources.append('deb-src %s %s %s' % (s.url, s.name, s.comp))
         write_data(os.path.join(self.get_apt_dir(),'sources.list'), "\n".join(sources))
 
         config = (('APT',
@@ -80,10 +102,10 @@ class Workspace:
                      ['TrustedKeyring "/etc/apt/trusted.gpg"']))),
                   ('Dir "%s"' % self.get_apt_dir(),
                    (('State "%s"' % self.get_apt_dir(),
-                     ['Lists "%s"' % self.get_apt_dir(),
+                     ['Lists "%s"' % self.get_apt_dir() + '/lists',
                       'xstatus "xstatus"',
                       'userstatus "status.user"',
-                      'status "%s"' % (self.get_apt_dir() + 'status'),
+                      'status "%s"' % (self.get_apt_dir() + '/status'),
                       'cdroms "cdroms.list"']),
                     ('Etc "%s"' % self.get_apt_dir(),
                      ['SourceList "sources.list"',

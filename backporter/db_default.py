@@ -24,8 +24,7 @@ schema = [
     Table('version', key=('package', 'suite'))[
         Column('package'),
         Column('suite'),
-        Column('version'),
-        Column('time', type='int')],
+        Column('value')],
     Table('build', key=('package', 'suite', 'arch','action'))[
         Column('package'),
         Column('suite'),

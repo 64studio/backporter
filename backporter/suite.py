@@ -62,8 +62,7 @@ class Suite(object):
             handle_ta = False
 
         cursor = db.cursor()
-#        self.db.log.debug("Creating new suite '%s'" % self.name)
-#        print 'INSERT INTO suite VALUES (%s,%d,%s,%s)' % (self.name, 0, self.url, self.comp)
+        self.ws.log.debug("Creating new suite '%s'" % self.name)
         cursor.execute("INSERT INTO suite VALUES ('%s',%d,'%s','%s')" % (self.name, 0, self.url, self.comp))
 
         if handle_ta:
@@ -110,8 +109,5 @@ class Suite(object):
             suite.url  = url
             suite.comp = comp
             suites.append(suite)
-#        def suite_order(v):
-#            return (v.time or sys.maxint, embedded_numbers(v.name))
-#        return sorted(suites, key=suite_order, reverse=True)
         return suites
     select = classmethod(select)
