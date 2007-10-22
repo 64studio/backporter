@@ -16,9 +16,8 @@ import locale
 
 import backporter
 from backporter.ws import Workspace
-from backporter.package import *
-from backporter.build import Builder
-from backporter.suite import *
+from backporter.model import *
+from backporter.build import *
 
 class BackporterAdmin(cmd.Cmd):
     intro = ''
@@ -217,6 +216,22 @@ class BackporterAdmin(cmd.Cmd):
             traceback.print_exc()
             return 2
 
+    ## Create
+    _help_create = [('create'), ('create', 'Creates build chroot')]
+
+    def do_create(self, line):
+        ws = self.ws_open()
+        for s in Suite.select(ws, SuiteType.Released.Value):
+            b = Builder(s)
+            b.create()
+
+    ## Update
+    _help_update = [('update'), ('update', 'Update package status')]
+
+    def do_update(self, line):
+        ws = self.ws_open()
+        ws.update()
+
     ## Suite
     _help_suite = [('suite list', 'Show suites'), ('suite chroot [<suite>]', 'Creates build chroot'),
                    ('suite update', 'Update APT lists'),
@@ -253,25 +268,11 @@ class BackporterAdmin(cmd.Cmd):
         suite.comp = comp
         suite.insert()
 
-    def _do_suite_update(self):
-        self.ws_open().update()
-
-    def _do_suite_chroot(self, name=None):
-
-        ws = self.ws_open()
-        if name:
-            s = Suite(ws, name)
-            b = Builder(s)
-            b.create()
-        else:
-            for s in Suite.select(ws, SuiteType.Released.Value):
-                b = Builder(s)
-                b.create()
-
     ## Package
     _help_package = [('package list', 'Show packages'),
                        ('package add <pkg>', 'Add package'),
                        ('package remove <pkg>', 'Remove package')]
+
 
     def do_package(self, line):
         arg = self.arg_tokenize(line)
@@ -299,6 +300,19 @@ class BackporterAdmin(cmd.Cmd):
         package = Package(self.ws_open(), name)
         package.delete()
 
+    ## Test
+    _help_test = [('test', 'Tetst')]
+
+    def do_test(self, line):
+        for v in Version.select(self.ws_open()):
+            v.delete()
+        v = Version(self.ws_open())
+        v.package = 'ardour'
+        v.suite   = 'etch'
+        v.value  = '0.1'
+        v.insert()
+        v.value  = '0.2'
+        v.update()
 
 def run(args):
     """Main entry point."""

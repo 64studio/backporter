@@ -25,11 +25,11 @@ schema = [
         Column('package'),
         Column('suite'),
         Column('value')],
-    Table('build', key=('package', 'suite', 'arch','action'))[
+    Table('build', key=('package', 'suite', 'arch'))[
         Column('package'),
         Column('suite'),
         Column('arch'),
-        Column('action')],
+        Column('action', type='int')],
     Table('enum', key=('type', 'name'))[
         Column('type'),
         Column('name'),

@@ -12,8 +12,7 @@ import re
 from backporter import db_default
 from backporter.db import *
 from backporter.utils import *
-from backporter.suite import *
-from backporter.package import *
+from backporter.model import *
 
 __all__ = ['Workspace']
 
