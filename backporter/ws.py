@@ -19,6 +19,8 @@ __all__ = ['Workspace']
 class Log:
     def debug(self,text):
         print 'D: %s' % text
+    def info(self,text):
+        print 'I: %s' % text
 
 class Workspace:
 
@@ -87,6 +89,9 @@ class Workspace:
                 v.suite   = m.group(3)
                 v.value   = m.group(2)
                 v.update()
+
+    def get_apt_conf(self):
+        return os.path.join(self.get_apt_dir(),'apt.conf')
 
     def _gen_apt_conf(self):
         sources = []

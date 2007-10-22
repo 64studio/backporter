@@ -156,11 +156,10 @@ class Package(object):
             self.status = PackageStatus.Todo # FIX THIS
         else:
             self.name = None
-            self.version = {}
 
     exists = property(fget=lambda self: self.name is not None)
 
-    def _get_bleeding(self):
+    def get_bleeding(self):
 
         bleeding = None
         for s in Suite.select(self.ws, SuiteType.Bleeding.Value):
@@ -316,6 +315,8 @@ class Version(object):
             handle_ta = False
 
         cursor = db.cursor()
+        if not self.value:
+            self.value = '0'
         self.ws.log.debug("Creating new version '%s %s %s'" % (self.package,self.suite,self.value) )
         cursor.execute("INSERT INTO version VALUES ('%s','%s','%s')" % (self.package,self.suite,self.value))
 

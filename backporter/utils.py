@@ -76,3 +76,15 @@ def write_data(filename, data):
             fileobj.close()
     except IOError, e:
         self.log.warn('Couldn\'t write to file (%s)', e, exc_info=True)
+
+def strip_epoch(version):
+    if len(version.split(':')) >= 2:
+        return "".join(version.split(':')[1:])
+    else:
+        return version
+
+def strip_revision(version):
+    return version.split('-')[0]
+
+def upstream_version(version):
+    return strip_revision(strip_epoch(version))

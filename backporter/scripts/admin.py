@@ -189,14 +189,13 @@ class BackporterAdmin(cmd.Cmd):
     do_EOF = do_quit # Alias
 
 
-    ## Initws
-    _help_initws = [('initws <repospath>',
-                      'Create and initialize a new workspace')]
+    ## Workspace
+    _help_create = [('create', 'Create and initialize a new workspace')]
 
-    def do_initws(self, line):
+    def do_create(self, line):
 
         if os.path.exists(self.wsname) and os.listdir(self.wsname):
-            print "Initws for '%s' failed." % self.wsname
+            print "Create for '%s' failed." % self.wsname
             print "Directory exists and is not empty."
             return 2
 
@@ -216,14 +215,14 @@ class BackporterAdmin(cmd.Cmd):
             traceback.print_exc()
             return 2
 
-    ## Create
-    _help_create = [('create'), ('create', 'Creates build chroot')]
+    ## Build
+    _help_build = [('build'), ('build', 'Build scheduled packages')]
 
-    def do_create(self, line):
+    def do_build(self, line):
         ws = self.ws_open()
         for s in Suite.select(ws, SuiteType.Released.Value):
             b = Builder(s)
-            b.create()
+            b.build()
 
     ## Update
     _help_update = [('update'), ('update', 'Update package status')]
