@@ -7,6 +7,10 @@ import sys
 import time
 
 from backporter.utils import *
+import apt_pkg,sys,re,string;
+
+apt_pkg.InitConfig();
+apt_pkg.InitSystem();
 
 __all__ = ['Package', 'PackageStatus', 'Version', 'Suite', 'SuiteType', 'Build', 'BuildAction']
 
@@ -64,6 +68,21 @@ class Suite(object):
         cursor = db.cursor()
         self.ws.log.debug("Creating new suite '%s'" % self.name)
         cursor.execute("INSERT INTO suite VALUES ('%s',%d,'%s','%s')" % (self.name, 0, self.url, self.comp))
+
+        for p in Package.select(self.ws):
+            v = Version(self.ws)
+            v.package = p.name
+            v.suite   = self.name
+            v.value   = None
+            v.insert()
+
+            for a in self.ws.archs:
+                b = Build(self.ws)
+                b.package = p.name
+                b.suite   = self.name
+                b.arch    = a
+                b.action  = BuildAction.Schedule.Value
+                b.insert()
 
         if handle_ta:
             db.commit()
@@ -140,6 +159,20 @@ class Package(object):
             self.version = {}
 
     exists = property(fget=lambda self: self.name is not None)
+
+    def _get_bleeding(self):
+
+        bleeding = None
+        for s in Suite.select(self.ws, SuiteType.Bleeding.Value):
+            v = Version(self.ws, self.name, s.name)
+            if bleeding:
+                b = Version(self.ws, self.name, bleeding)
+                if apt_pkg.VersionCompare(b.value, v.value) <= -1:
+                    bleeding = s.name
+            else:
+                bleeding = s.name
+        return bleeding
+
 
     def delete(self, db=None):
         assert self.name, 'Cannot delete non-existing "%s"' % self.name

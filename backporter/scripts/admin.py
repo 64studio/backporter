@@ -263,7 +263,7 @@ class BackporterAdmin(cmd.Cmd):
     def _do_suite_add(self, name, type, url, comp):
         suite = Suite(self.ws_open())
         suite.name = name
-        suite.type = type
+        suite.type = SuiteType.Bleeding.Value
         suite.url  = url
         suite.comp = comp
         suite.insert()
@@ -304,15 +304,9 @@ class BackporterAdmin(cmd.Cmd):
     _help_test = [('test', 'Tetst')]
 
     def do_test(self, line):
-        for v in Version.select(self.ws_open()):
-            v.delete()
-        v = Version(self.ws_open())
-        v.package = 'ardour'
-        v.suite   = 'etch'
-        v.value  = '0.1'
-        v.insert()
-        v.value  = '0.2'
-        v.update()
+        for p in Package.select(self.ws_open()):
+            
+            print p.name, p._get_bleeding()
 
 def run(args):
     """Main entry point."""
