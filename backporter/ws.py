@@ -8,6 +8,7 @@ import os
 import ConfigParser
 import string
 import re
+import stat
 
 from backporter import db_default
 from backporter.db import *
@@ -57,6 +58,7 @@ class Workspace:
         fd = open(os.path.join(self.get_apt_dir(), 'status'), 'w')
         fd.close()
         os.mkdir(os.path.join(self.get_apt_dir(),'partial'))
+        os.mkdir(os.path.join(self.get_apt_dir(),'hooks'))
 
         # Setup the default configuration
         os.mkdir(os.path.join(self.path, 'conf'))
@@ -78,6 +80,7 @@ class Workspace:
     def update(self):
         """Update APT lists"""
         self._gen_apt_conf()
+        self._gen_apt_hook()
 #        os.system('apt-get update -c %s' %  os.path.join(self.get_apt_dir(),'apt.conf'))
         r = re.compile(' *([^ ]*)[ \|]*([^ ]*)[ \|]*[^ ]* *([^/]*)')
         for p in Package.select(self):
@@ -93,11 +96,20 @@ class Workspace:
     def get_apt_conf(self):
         return os.path.join(self.get_apt_dir(),'apt.conf')
 
+    def _gen_apt_hook(self):
+        buffer = []
+        buffer.append('#!/bin/sh')
+        buffer.append('apt-get update')
+        hookfile = os.path.join(self.get_apt_dir(),'hooks','D00apt_get_update')
+        write_data(hookfile, "\n".join(buffer))
+        os.system('chmod 755 %s' % hookfile)
+        
+
     def _gen_apt_conf(self):
-        sources = []
+        buffer = []
         for s in Suite.select(self):
-            sources.append('deb-src %s %s %s' % (s.url, s.name, s.comp))
-        write_data(os.path.join(self.get_apt_dir(),'sources.list'), "\n".join(sources))
+            buffer.append('deb-src %s %s %s' % (s.url, s.name, s.comp))
+        write_data(os.path.join(self.get_apt_dir(),'buffer.list'), "\n".join(buffer))
 
         config = (('APT',
                    (('Get',
