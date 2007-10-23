@@ -7,6 +7,9 @@
 import os
 import string
 import re
+import getpass
+import sys
+import telnetlib
 
 from backporter.utils import *
 from backporter.model import *
@@ -31,8 +34,20 @@ class Builder:
             os.makedirs(self._get_log_dir())
             os.makedirs(self._get_result_dir())
 
+    def _add_rebuildd_job(self, v, a):
+        host = '127.0.0.1'
+        tn = telnetlib.Telnet(host,'9999')
+        tn.write(str('job add %s %s %s %s\n' % (v.package, v.value, v.suite, a)))
+
     # Creates base.tgz
     def build(self):
+        for a in self.ws.archs:
+            for p in Package.select(self.ws):
+                v = Version(self.ws, p.name, p.get_bleeding())
+                self._add_rebuildd_job(v, a)
+                return
+
+    def old_build(self):
         for a in self.ws.archs:
 
             # Generate conf file
