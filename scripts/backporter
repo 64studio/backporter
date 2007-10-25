@@ -16,5 +16,15 @@ __license__ = """
 
 import sys
 
-from backporter.scripts.admin import run
-sys.exit(run(sys.argv[1:]))
+from backporter.Shell import Shell
+
+def main(args):
+
+    if len(args) == 1:
+        return Shell().cmdloop()
+
+    if len(args) > 1:
+        return Shell().onecmd(' '.join(args[1:]))
+ 
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))
