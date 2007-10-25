@@ -56,7 +56,7 @@ class Index(object):
 
 schema = [
     # Common
-    Table('suite', key='name')[
+    Table('dist', key='name')[
         Column('name'),
         Column('type', type='int'),
         Column('url'),
@@ -65,16 +65,16 @@ schema = [
         Column('package'),
         Column('status', type='int'),
         Column('options')],
-    Table('source', key=('package', 'suite'))[
+    Table('source', key=('package', 'dist'))[
         Column('package'),
-        Column('suite'),
+        Column('dist'),
         Column('version')],
 ]
 
 url = {'debian':'http://ftp.debian.org/debian'}
-#SuiteType.Released.Value,url['debian']
-#SuiteType.Bleeding.Value,url['debian']
-data = (('suite',
+#DistType.Released.Value,url['debian']
+#DistType.Bleeding.Value,url['debian']
+data = (('dist',
          ('name','type','url','comp'),
          (('etch',0,'main contrib non-free'),
           ('sid' ,1,'main contrib non-free'))),

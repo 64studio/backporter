@@ -8,20 +8,20 @@ from backporter.Database import Database
 from backporter.Logger   import Logger
 from backporter.Enum     import Enum
 
-__all__ = ['Suite', 'SuiteType', 'Backport', 'BackportStatus','Source']
+__all__ = ['Dist', 'DistType', 'Backport', 'BackportStatus','Source']
 
-SuiteType = Enum('Dummy', 'Released', 'Bleeding')
+DistType = Enum('Dummy', 'Released', 'Bleeding')
 
-class Suite(object):
+class Dist(object):
 
     def __init__(self, name=None):
         self.cnx = Database().get_cnx()
         if name:
             cursor = self.cnx.cursor()
-            cursor.execute("SELECT type,url,comp FROM suite WHERE name='%s'" % (name))
+            cursor.execute("SELECT type,url,comp FROM dist WHERE name='%s'" % (name))
             row = cursor.fetchone()
             if not row:
-                raise BackporterError, 'Suite %s does not exist.' % name
+                raise BackporterError, 'Dist %s does not exist.' % name
             self.name = name
             self.type = row[0]
             self.url  = row[1]
@@ -33,42 +33,42 @@ class Suite(object):
             self.comp = None
 
     def delete(self):
-        assert self.name, 'Cannot deleting non-existent suite'
+        assert self.name, 'Cannot deleting non-existent dist'
         self.name = self.name.strip()
         cursor = self.cnx.cursor()
-        Logger().debug("Deleting suite '%s'" % self.name)
-        cursor.execute("DELETE FROM suite WHERE name='%s'" % self.name)
+        Logger().debug("Deleting dist '%s'" % self.name)
+        cursor.execute("DELETE FROM dist WHERE name='%s'" % self.name)
         self.cnx.commit()
 
         for b in Backport.select():
             source = Source()
-            source.package = b.package
-            source.suite   = self.name
-            source.version   = None
-            source.delete()
+            s.package  = b.package
+            s.dist     = self.name
+            s.version  = None
+            s.delete()
 
     def insert(self):
-        assert self.name, 'Cannot create suite with no name'
+        assert self.name, 'Cannot create dist with no name'
         self.name = self.name.strip()
         cursor = self.cnx.cursor()
-        Logger().debug("Creating new suite '%s'" % self.name)
-        cursor.execute("INSERT INTO suite VALUES ('%s',%d,'%s','%s')" % (self.name, 0, self.url, self.comp))
+        Logger().debug("Creating new dist '%s'" % self.name)
+        cursor.execute("INSERT INTO dist VALUES ('%s',%d,'%s','%s')" % (self.name, 0, self.url, self.comp))
 
         for b in Backport.select():
-            source = Source()
-            source.package = b.package
-            source.suite   = self.name
-            source.version   = None
-            source.insert()
+            s = Source()
+            s.package  = b.package
+            s.dist     = self.name
+            s.version  = None
+            s.insert()
 
         self.cnx.commit()
 
     def update(self):
-        assert self.name, 'Cannot update non-existent suite'
+        assert self.name, 'Cannot update non-existent dist'
         self.name = self.name.strip()
         cursor = self.cnx.cursor()
-        Logger().debug('Updating suite "%s"' % self.name)
-        cursor.execute("UPDATE suite SET name='%s',type=%d, url='%s', comp='%s' WHERE name='%s'" % \
+        Logger().debug('Updating dist "%s"' % self.name)
+        cursor.execute("UPDATE dist SET name='%s',type=%d, url='%s', comp='%s' WHERE name='%s'" % \
                            (self.name, self.type, self.url, self.comp, self.name))
 
         self.cnx.commit()
@@ -76,18 +76,18 @@ class Suite(object):
     def select(cls, type=None):
         cursor = Database().get_cnx().cursor()
         if not type:
-            cursor.execute("SELECT name,type,url,comp FROM suite")
+            cursor.execute("SELECT name,type,url,comp FROM dist")
         else:
-            cursor.execute("SELECT name,type,url,comp FROM suite WHERE type=%d" % type)
-        suites = []
+            cursor.execute("SELECT name,type,url,comp FROM dist WHERE type=%d" % type)
+        dists = []
         for name, type, url, comp in cursor:
             s = cls()
             s.name = name
             s.type = type
             s.url  = url
             s.comp = comp
-            suites.append(s)
-        return suites
+            dists.append(s)
+        return dists
     select = classmethod(select)
 
 BackportStatus = Enum('Dummy', 'Freezed', 'AutoUpdate')
@@ -118,11 +118,11 @@ class Backport(object):
         cursor.execute("DELETE FROM backport WHERE package='%s'" % self.package)
         self.cnx.commit()
 
-        for s in Suite.select():
-            source = Source()
-            source.package = self.package
-            source.suite   = s.name
-            source.delete()
+        for d in Dist.select():
+            s = Source()
+            s.package = self.package
+            s.dist   = d.name
+            s.delete()
 
     def insert(self):
         assert self.package, 'Cannot create backport with no package'
@@ -131,12 +131,12 @@ class Backport(object):
         Logger().debug("Creating new backport '%s'" % self.package)
         cursor.execute("INSERT INTO backport VALUES ('%s',%d, '%s')" % (self.package, self.status, self.options))
 
-        for s in Suite.select():
-            source = Source()
-            source.package = self.package
-            source.suite   = s.name
-            source.version = None
-            source.insert()
+        for d in Dist.select():
+            s = Source()
+            s.package = self.package
+            s.dist   = d.name
+            s.version = None
+            s.insert()
 
         self.cnx.commit()
 
@@ -168,60 +168,60 @@ class Backport(object):
 
 class Source(object):
 
-    def __init__(self, package=None, suite=None):
+    def __init__(self, package=None, dist=None):
         self.cnx = Database().get_cnx()
-        if package and suite:
+        if package and dist:
             cursor = self.cnx.cursor()
-            cursor.execute("SELECT version FROM source WHERE package='%s' and suite='%s'" % (package, suite))
+            cursor.execute("SELECT version FROM source WHERE package='%s' and dist='%s'" % (package, dist))
             row = cursor.fetchone()
             if not row:
                 raise SourceerError, 'Source %s does not exist.' % name
             self.package = package
-            self.suite   = suite
+            self.dist   = dist
             self.version = row[0]
         else:
             self.package = None
-            self.suite   = None
+            self.dist   = None
             self.version = None
 
     def delete(self):
-        assert self.package and self.suite, 'Cannot deleting non-existent source'
+        assert self.package and self.dist, 'Cannot deleting non-existent source'
         self.package = self.package.strip()
         cursor = self.cnx.cursor()
         Logger().debug("Deleting source '%s'" % self.package)
-        cursor.execute("DELETE FROM source WHERE package='%s' and suite='%s'" % (self.package, self.suite))
+        cursor.execute("DELETE FROM source WHERE package='%s' and dist='%s'" % (self.package, self.dist))
         self.cnx.commit()
 
     def insert(self):
-        assert self.package and self.suite, 'Cannot create source with no package'
+        assert self.package and self.dist, 'Cannot create source with no package'
         self.package = self.package.strip()
         cursor = self.cnx.cursor()
-        Logger().debug("Creating new source '%s','%s'" % (self.package, self.suite))
-        cursor.execute("INSERT INTO source VALUES ('%s','%s', '%s')" % (self.package, self.suite, self.version))
+        Logger().debug("Creating new source '%s','%s'" % (self.package, self.dist))
+        cursor.execute("INSERT INTO source VALUES ('%s','%s', '%s')" % (self.package, self.dist, self.version))
 
         self.cnx.commit()
 
     def update(self):
-        assert self.package and self.suite, 'Cannot update non-existent source'
+        assert self.package and self.dist, 'Cannot update non-existent source'
         self.package = self.package.strip()
         cursor = self.cnx.cursor()
-        Logger().debug('Updating source "%s","%s"' % (self.package, self.suite))
-        cursor.execute("UPDATE source SET version='%s' WHERE package='%s' and suite='%s'" % \
-                           (self.version, self.package,self.suite))
+        Logger().debug('Updating source "%s","%s"' % (self.package, self.dist))
+        cursor.execute("UPDATE source SET version='%s' WHERE package='%s' and dist='%s'" % \
+                           (self.version, self.package,self.dist))
 
         self.cnx.commit()
 
-    def select(cls, suite=None):
+    def select(cls, dist=None):
         cursor = Database().get_cnx().cursor()
-        if not suite:
-            cursor.execute("SELECT package,suite,version FROM source")
+        if not dist:
+            cursor.execute("SELECT package,dist,version FROM source")
         else:
-            cursor.execute("SELECT package,suite,version FROM source WHERE suite='%s'" % suite)
+            cursor.execute("SELECT package,dist,version FROM source WHERE dist='%s'" % dist)
         sources = []
-        for package, suite, version in cursor:
+        for package, dist, version in cursor:
             b = cls()
             b.package  = package
-            b.suite    = suite
+            b.dist    = dist
             b.version  = version
             sources.append(b)
         return sources

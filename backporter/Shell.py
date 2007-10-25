@@ -40,36 +40,36 @@ class Shell(cmd.Cmd):
         for help in getattr(self, "_help_" + arg[0]):
             self._print_help(help)
 
-    ## Suite
-    _help_suite_add = ('suite add <name> <type> <url> <comp>', 'Add suite')
-    _help_suite_remove = ('suite remove <name>', 'Remove suite')
-    _help_suite = [('suite list', 'Show suites'),
-                   ('suite chroot [<name>]', 'Creates build chroot'),
-                   _help_suite_remove,
-                   _help_suite_add]
+    ## Dist
+    _help_dist_add = ('dist add <name> <type> <url> <comp>', 'Add dist')
+    _help_dist_remove = ('dist remove <name>', 'Remove dist')
+    _help_dist = [('dist list', 'Show dists'),
+                   ('dist chroot [<name>]', 'Creates build chroot'),
+                   _help_dist_remove,
+                   _help_dist_add]
 
-    def do_suite(self, line):
+    def do_dist(self, line):
         arg = self._tokenize(line)
         if len(arg) == 0:
-            return self.do_help('suite')
+            return self.do_help('dist')
 #try:
-        return getattr(self, "_do_suite_" + arg[0])(arg[1:])
+        return getattr(self, "_do_dist_" + arg[0])(arg[1:])
 #        except AttributeError, e:
-#            return self.do_help('suite')            
+#            return self.do_help('dist')            
 
-    def _do_suite_add(self, arg):
+    def _do_dist_add(self, arg):
 
         if not len(arg) >= 4:
-            return self._print_help(self._help_suite_add)
+            return self._print_help(self._help_dist_add)
 
-        Backporter().suite_add(arg[0], arg[1], arg[2], " ".join(arg[3:]))
+        Backporter().dist_add(arg[0], arg[1], arg[2], " ".join(arg[3:]))
 
-    def _do_suite_remove(self, arg):
+    def _do_dist_remove(self, arg):
 
         if not len(arg) == 1:
-            return self._print_help(self._help_suite_add)
+            return self._print_help(self._help_dist_add)
 
-        Backporter().suite_remove(arg[0])
+        Backporter().dist_remove(arg[0])
 
     def do_EOF(self, line):
         print

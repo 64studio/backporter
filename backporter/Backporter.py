@@ -27,23 +27,23 @@ class Backporter(object):
     def init(self):
         return
 
-    def suite_add(self, name, type, url, comp):
-        s = Suite()
+    def dist_add(self, name, type, url, comp):
+        s = Dist()
         s.name = name
-        s.type = SuiteType.Bleeding.Value # FIX
+        s.type = DistType.Bleeding.Value # FIX
         s.url  = url
         s.comp = comp
         s.insert()
 
-    def suite_remove(self, name):
-        s = Suite()
+    def dist_remove(self, name):
+        s = Dist()
         s.name = name
         s.delete()
 
-    def suite_update(self, name, type, url, comp):
-        s = Suite()
+    def dist_update(self, name, type, url, comp):
+        s = Dist()
         s.name = name
-        s.type = SuiteType.Bleeding.Value # FIX
+        s.type = DistType.Bleeding.Value # FIX
         s.url  = url
         s.comp = comp
         s.update()
@@ -67,22 +67,22 @@ class Backporter(object):
         b.options = options
         b.update()
 
-    def source_add(self, package, suite, version):
+    def source_add(self, package, dist, version):
         s = Source()
         s.package = package
-        s.suite   = suite
+        s.dist   = dist
         s.version = version
         s.insert()
 
-    def source_remove(self, package, suite):
+    def source_remove(self, package, dist):
         s = Source()
         s.package = package
-        s.suite = suite
+        s.dist = dist
         s.delete()
 
-    def source_update(self, package, suite, version):
+    def source_update(self, package, dist, version):
         s = Source()
         s.package = package
-        s.suite  = suite
+        s.dist  = dist
         s.version = version
         s.update()
