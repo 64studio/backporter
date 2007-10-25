@@ -40,7 +40,8 @@ class Config(object, ConfigParser.ConfigParser):
         self.add_section('config')
 
         # add default values
-        self.set('config', 'database', '/var/lib/backporter/backporter.db')
+        self.set('config', 'database',  '/var/lib/backporter/backporter.db')
+        self.set('config', 'workspace', '/var/cache/backporter/')
 
         if not dontparse:
             self.reload()

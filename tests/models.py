@@ -12,8 +12,16 @@ class TestSequenceFunctions(unittest.TestCase):
     
     def setUp(self):
         Config().set('config', 'database', './backporter.db')
+        Config().set('config', 'workspace', './')
 
-    def test_models(self):
+    def test_all(self):
+        self._test_models()
+        self._test_workspace()
+
+    def _test_workspace(self):
+        Backporter().update()
+
+    def _test_models(self):
         self._test_dist()
         self._test_backport()
         self._test_source()
