@@ -6,18 +6,17 @@
 
 import os
 import re
-import apt_pkg
+#import apt_pkg
 import telnetlib
 import socket
 
 from backporter.BackporterConfig    import BackporterConfig
-from backporter.BackporterScheduler import BackporterScheduler
 from backporter.Database import Database
 from backporter.Logger   import Logger
 from backporter.Models   import *
 
-apt_pkg.InitConfig()
-apt_pkg.InitSystem()
+#apt_pkg.InitConfig()
+#apt_pkg.InitSystem()
 
 __all__ = ['Backporter']
 
@@ -32,8 +31,6 @@ class Backporter(object):
        return cls._instance  
 
     def init(self):
-
-        self.archs = BackporterConfig().get('config', 'archs').split()
 
         # Create the directory structure
         for dir in [self._get_workspace_dir(),
@@ -73,7 +70,7 @@ class Backporter(object):
     def backport_add(self, package, status, options):
        b = Backport()
        b.package = package
-       b.type    = status
+       b.status    = status
        b.options = options
        b.insert()
 
@@ -100,7 +97,7 @@ class Backporter(object):
        self._gen_apt_sources_list()
        self._gen_apt_conf()
        self._gen_apt_hook()
-#       os.system('apt-get update -c %s' %  self._get_apt_conf())
+       os.system('apt-get update -c %s' %  self._get_apt_conf())
        r = re.compile(' *([^ ]*)[ \|]*([^ ]*)[ \|]*[^ ]* *([^/]*)')
        for b in Backport.select():
           madison = os.popen('apt-cache -c %s madison %s' %  (self._get_apt_conf(), b.package))
@@ -140,26 +137,8 @@ class Backporter(object):
     # Schedule build jobs for the packages that need to be backported
     def schedule(self):
 
-        for b in Backport.select():
-
-            if b.status == BackportStatus.Freezed.Value:
-                continue
-
-            for d in Dist.select(DistType.Released.Value):
-
-                sr = Source(b.package, d.name)
-                sb = Source(b.package, b.bleeding())
-
-                if apt_pkg.VersionCompare(sb.version, sr.version) >= 1:
-
-                    for arch in self.archs:
-                        version = '%s~%s1' % (sb.version, d.name)
-                        status  = Scheduler().job_status(b.package,version,d.name,arch)
-                        continue
-                        if status:
-                            print b.package,version,d.name,arch,status
-                        else:
-                            print b.package,version,d.name,arch,'Not scheduled'
+        from backporter.BackporterScheduler import BackporterScheduler
+        BackporterScheduler().schedule()
 
     def _get_workspace_dir(self):
         return BackporterConfig().get('config', 'workspace')

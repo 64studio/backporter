@@ -73,13 +73,19 @@ class Shell(cmd.Cmd):
         Backporter().dist_remove(arg[0])
 
     ## Download and repack source
-    _help_repack = ('repack <name> <dist>', 'Download and repack a source package')
+    _help_repack = [('repack <name> <dist>', 'Download and repack a source package')]
 
     def do_repack(self, line):
         arg = self._tokenize(line)
         if not len(arg) >= 2:
             return self._print_help(self._help_repack)
         Backporter().repack(arg[1], arg[0])
+
+    ## Schedule new jobs
+    _help_schedule = [('schedule', 'Schedule new jobs')]
+
+    def do_schedule(self, line):
+        Backporter().schedule()
 
     ## Quit
 

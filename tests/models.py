@@ -6,7 +6,8 @@ from backporter.BackporterConfig      import BackporterConfig
 from backporter.Database    import Database
 from backporter.Logger      import Logger
 from backporter.Models      import *
-from backporter.Backporter  import Backporter, Scheduler
+from backporter.Backporter  import Backporter
+
 #from backporter.Backporterd import Backporterd
 
 class TestSequenceFunctions(unittest.TestCase):
@@ -43,8 +44,10 @@ class TestSequenceFunctions(unittest.TestCase):
     def _test_backport(self):
         libgig  = ('libgig', 0, None)
         liblscp = ('liblscp', 0, None)
+        bootsplash = ('bootsplash', BackportStatus.AutoUpdate.Value, None)
         Backporter().backport_add(libgig[0], libgig[1], libgig[2])
         Backporter().backport_add(liblscp[0], liblscp[1], liblscp[2])
+        Backporter().backport_add(bootsplash[0], bootsplash[1], bootsplash[2])
         Backporter().backport_update(libgig[0], BackportStatus.AutoUpdate.Value, libgig[2])
         Backporter().backport_update(liblscp[0], BackportStatus.AutoUpdate.Value, liblscp[2])
 

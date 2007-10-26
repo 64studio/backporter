@@ -7,14 +7,13 @@
 import sys
 import re
 import string
-import apt_pkg
 
 from backporter.Database import Database
 from backporter.Logger   import Logger
 from backporter.Enum     import Enum
-
-apt_pkg.InitConfig()
-apt_pkg.InitSystem()
+from apt_pkg             import VersionCompare
+#apt_pkg.InitConfig()
+#apt_pkg.InitSystem()
 
 __all__ = ['Dist', 'DistType', 'Backport', 'BackportStatus','Source']
 
@@ -182,7 +181,7 @@ class Backport(object):
             s = Source(self.package, d.name)
             if bleeding:
                 b = Source(self.package, bleeding)
-                if apt_pkg.VersionCompare(b.version, s.version) <= -1:
+                if Source.compare(a, b) <= -1:
                     bleeding = d.name
             else:
                 bleeding = d.name
@@ -249,3 +248,6 @@ class Source(object):
         return sources
     select = classmethod(select)
 
+    @staticmethod
+    def compare(a, b):
+        return VersionCompare(a.version, b.version)

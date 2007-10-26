@@ -6,21 +6,23 @@
 
 import os
 import re
-import apt_pkg
 import telnetlib
 import socket
+import warnings
+warnings.simplefilter('ignore', FutureWarning)
 
 from backporter.BackporterConfig import BackporterConfig
 from backporter.Database import Database
 from backporter.Logger   import Logger
 from backporter.Models   import *
 
-apt_pkg.InitConfig()
-apt_pkg.InitSystem()
+from rebuildd.RebuilddConfig import RebuilddConfig
+from rebuildd.Job            import Job, JobStatus
+from rebuildd.Package        import Package
 
 __all__ = ['BackporterScheduler']
 
-class Scheduler(object):
+class BackporterScheduler(object):
 
     _instance = None 
 
@@ -32,32 +34,57 @@ class Scheduler(object):
 
     def init(self):
 
-        # Try to connect to backporterd
-        self.host    = '0.0.0.0'
-        self.port    = '9999'
-        self.timeout = 5
-        self.prompt  = 'rebuildd@localhost->'
-        try:
-            self.cnx   = telnetlib.Telnet(self.host, self.port)
-            self.cnx.read_until(self.prompt)
-            Logger().debug("Connected to backported")
-        except socket.error, msg:
-            self.cnx   = None
-            Logger().debug("Could not connect to backported")
+        from sqlobject import sqlhub, connectionForURI
+        dburi = 'sqlite://' + os.path.join(BackporterConfig().get('config', 'database'), 'rebuildd.db')
+        sqlhub.processConnection = connectionForURI(dburi)
+
+        self.archs = BackporterConfig().get('config', 'archs').split()
+        self.priority = '1' # Default job priority
+
+    # Schedule build jobs for the packages that need to be backported
+    def schedule(self):
+
+        from backporter.BackporterScheduler import BackporterScheduler
+        for b in Backport.select():
+
+            if b.status == BackportStatus.Freezed.Value:
+                continue
+
+            for d in Dist.select(DistType.Released.Value):
+
+                sr = Source(b.package, d.name)
+                sb = Source(b.package, b.bleeding())
+
+                if Source.compare(sb, sr) >= 1:
+
+                    version = '%s~%s1' % (sb.version, d.name)
+                    
+                    for arch in self.archs:
+
+                        (id, status) = self.job_status(b.package, version, d.name, arch)
+
+                        if status != JobStatus.UNKNOWN:
+                            continue # Already scheduled
+
+                        # Add a new job
+                        job = Job(package=id, dist=d.name, arch=arch)
+                        job.status = JobStatus.WAIT
+                        job.arch = arch
+                        job.mailto = None
 
 
     def job_status(self, package, version, dist, arch):
-        if not self.cnx:
-            Logger().debug("Not connected to backported")
-            return
-        print(str('job status %s %s %s %s' % \
-                           (package, version, dist, arch)))
-        self.cnx.write(str('job status %s %s %s %s\n' % \
-                           (package, version, dist, arch)))
 
-        (i,m,ans) = self.cnx.expect(['None',self.prompt])
-#        self.cnx.read_very_eager()
-        print ans
-        if i == 1:
-            return None
-        return ans[ans.find('status'):].split(" ")[1]
+        pkgs = Package.selectBy(name=package, version=version)
+        if pkgs.count():
+            # If several packages exists, just take the first
+            pkg = pkgs[0]
+        else:
+            # Maybe we found no packages, so create a brand new one!
+            pkg = Package(name=package, version=version, priority=self.priority)
+
+        jobs = Job.selectBy(package=pkg.id, dist=dist, arch=arch)
+        if jobs.count():
+            return (pkg.id, jobs[0].status)
+        else:
+            return (pkg.id, JobStatus.UNKNOWN)
