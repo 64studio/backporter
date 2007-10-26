@@ -4,9 +4,17 @@
 # All rights reserved.
 #
 
+import sys
+import re
+import string
+import apt_pkg
+
 from backporter.Database import Database
 from backporter.Logger   import Logger
 from backporter.Enum     import Enum
+
+apt_pkg.InitConfig()
+apt_pkg.InitSystem()
 
 __all__ = ['Dist', 'DistType', 'Backport', 'BackportStatus','Source']
 
@@ -52,7 +60,7 @@ class Dist(object):
         self.name = self.name.strip()
         cursor = self.cnx.cursor()
         Logger().debug("Creating new dist '%s'" % self.name)
-        cursor.execute("INSERT INTO dist VALUES ('%s',%d,'%s','%s')" % (self.name, 0, self.url, self.comp))
+        cursor.execute("INSERT INTO dist VALUES ('%s',%d,'%s','%s')" % (self.name, self.type, self.url, self.comp))
 
         for b in Backport.select():
             s = Source()
@@ -165,6 +173,20 @@ class Backport(object):
             backports.append(b)
         return backports
     select = classmethod(select)
+
+    # Return the bleeding edge dist for this backport
+    def bleeding(self):
+
+        bleeding = None
+        for d in Dist().select(DistType.Bleeding.Value):
+            s = Source(self.package, d.name)
+            if bleeding:
+                b = Source(self.package, bleeding)
+                if apt_pkg.VersionCompare(b.version, s.version) <= -1:
+                    bleeding = d.name
+            else:
+                bleeding = d.name
+        return bleeding
 
 class Source(object):
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import cmd
+import sys
 from backporter.Backporter import *
 
 class Shell(cmd.Cmd):
@@ -70,6 +71,17 @@ class Shell(cmd.Cmd):
             return self._print_help(self._help_dist_add)
 
         Backporter().dist_remove(arg[0])
+
+    ## Download and repack source
+    _help_repack = ('repack <name> <dist>', 'Download and repack a source package')
+
+    def do_repack(self, line):
+        arg = self._tokenize(line)
+        if not len(arg) >= 2:
+            return self._print_help(self._help_repack)
+        Backporter().repack(arg[1], arg[0])
+
+    ## Quit
 
     def do_EOF(self, line):
         print

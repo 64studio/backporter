@@ -21,7 +21,7 @@ import os
 
 __all__ = ['Config']
 
-class Config(object, ConfigParser.ConfigParser):
+class BackporterConfig(object, ConfigParser.ConfigParser):
     """Main configuration singleton"""
 
     config_file = "/etc/backporter/backporter.conf"
@@ -40,8 +40,10 @@ class Config(object, ConfigParser.ConfigParser):
         self.add_section('config')
 
         # add default values
-        self.set('config', 'database',  '/var/lib/backporter/backporter.db')
-        self.set('config', 'workspace', '/var/cache/backporter/')
+        self.set('config', 'database',  '/var/lib/backporter')
+        self.set('config', 'workspace', '/var/cache/backporter')
+        self.set('config', 'log',       '/var/log/backporter')
+        self.set('config', 'archs',     'i386 amd64')
 
         if not dontparse:
             self.reload()

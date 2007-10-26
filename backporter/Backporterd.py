@@ -18,36 +18,14 @@
 
 """backporter - Tool for backporting Debian packages"""
 
+import sqlobject
+import sys
+import os
+
+from backporter.BackporterConfig import BackporterConfig
+from backporter.Models import *
 from rebuildd.RebuilddConfig import RebuilddConfig
 from rebuildd.Rebuildd       import Rebuildd
-from backporter.Config       import Config
-
-import sqlobject, sys
-
-# Create database
-def create_db():
-    try:
-        sqlobject.sqlhub.processConnection = \
-            sqlobject.connectionForURI(RebuilddConfig().get('build', 'database_uri'))
-        from rebuildd.Package import Package
-        from rebuildd.Job import Job
-        Package.createTable()
-        Job.createTable()
-    except Exception, error:
-        print "E: %s" % error
-        return 1
-
-    return 0
-
-if len(sys.argv) == 2:
-    if sys.argv[1] == "init":
-        sys.exit(create_db())
-    if sys.argv[1] == "dumpconfig":
-        print RebuilddConfig().dump()
-        sys.exit(0)
-    if sys.argv[1] == "fix":
-        Rebuildd().fix_jobs()
-        sys.exit(0)
 
 class Backporterd(Rebuildd):
 
@@ -55,8 +33,47 @@ class Backporterd(Rebuildd):
          
     def __new__(cls):  
         if cls._instance is None:  
+
+            path = {}
+            path['db']   = 'sqlite://' + os.path.join(BackporterConfig().get('config', 'database'), 'rebuildd.db')
+            path['log']  = os.path.join(BackporterConfig().get('config', 'log'), 'rebuildd.log')
+            path['ws']   = os.path.join(BackporterConfig().get('config', 'workspace'), 'sources')
+            path['chroot']   = os.path.join(BackporterConfig().get('config', 'workspace'), 'chroots')
+            path['logs'] = os.path.join(BackporterConfig().get('config', 'workspace'), 'log')
+            path['hook'] = os.path.join(BackporterConfig().get('config', 'workspace'), 'apt', 'hooks')
+
+            RebuilddConfig().config_file = "/dev/null"
+            RebuilddConfig().set('build', 'database_uri', path['db'])
+            RebuilddConfig().set('log', 'file', path['log'])
+            RebuilddConfig().set('build', 'work_dir', path['ws'])
+            RebuilddConfig().set('build', 'source_cmd', 'backporter repack %s %s %s')
+            RebuilddConfig().set('build', 'build_cmd', 'sudo pbuilder build --hookdir %s --basetgz %s/%%s-%%s.tgz %%s_%%s.dsc' % (path['hook'], path['chroot']))
+            RebuilddConfig().set('build', 'dists', " ".join([d.name for d in Dist.select()]))
+            RebuilddConfig().set('build', 'archs', BackporterConfig().get('config', 'archs'))
+            RebuilddConfig().set('build', 'max_threads', '1')
+            RebuilddConfig().set('log', 'logs_dir', path['logs'])
+
+            # Create missing directories
+            if not os.path.exists(path['logs']):
+                    os.mkdir(path['logs'])
+            if not os.path.exists(path['ws']):
+                    os.mkdir(path['ws'])
+
+            # Init the db
+            if not os.path.isfile(os.path.join(BackporterConfig().get('config', 'database'), 'rebuildd.db')):
+                try:
+                    sqlobject.sqlhub.processConnection = \
+                        sqlobject.connectionForURI(RebuilddConfig().get('build', 'database_uri'))
+                    from rebuildd.Package import Package
+                    from rebuildd.Job import Job
+                    Package.createTable()
+                    Job.createTable()
+                except Exception, error:
+                    print "E: %s" % error
+                    return 1
+
             cls._instance = Rebuildd.__new__(cls)  
-            cls._instance.init()
+
         return cls._instance  
 
 Backporterd().daemon()

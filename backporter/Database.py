@@ -7,7 +7,7 @@
 import os
 from pysqlite2 import dbapi2 as sqlite
 
-from backporter.Config import Config
+from backporter.BackporterConfig import BackporterConfig
 from backporter.Logger import Logger
 
 __all__ = ['Database']
@@ -98,7 +98,7 @@ class Database(object):
         return cls._instance  
 
     def init(self):
-        self.path = Config().get('config', 'database') 
+        self.path = os.path.join(BackporterConfig().get('config', 'database'),'backporter.db')
         if not os.path.isfile(self.path): # Create new db
             self.create()
         self.cnx = sqlite.connect(self.path)

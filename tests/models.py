@@ -2,17 +2,17 @@ import random
 import unittest
 import os
 
-from backporter.Config     import Config
-from backporter.Database   import Database
-from backporter.Logger     import Logger
-from backporter.Models     import *
-from backporter.Backporter import Backporter
+from backporter.BackporterConfig      import BackporterConfig
+from backporter.Database    import Database
+from backporter.Logger      import Logger
+from backporter.Models      import *
+from backporter.Backporter  import Backporter, Scheduler
+#from backporter.Backporterd import Backporterd
 
 class TestSequenceFunctions(unittest.TestCase):
     
-    def setUp(self):
-        Config().set('config', 'database', './backporter.db')
-        Config().set('config', 'workspace', './')
+    def _backporterd(self):
+        Backporterd()
 
     def test_all(self):
         self._test_models()
@@ -20,6 +20,7 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def _test_workspace(self):
         Backporter().update()
+        Backporter().schedule()
 
     def _test_models(self):
         self._test_dist()
@@ -45,6 +46,7 @@ class TestSequenceFunctions(unittest.TestCase):
         Backporter().backport_add(libgig[0], libgig[1], libgig[2])
         Backporter().backport_add(liblscp[0], liblscp[1], liblscp[2])
         Backporter().backport_update(libgig[0], BackportStatus.AutoUpdate.Value, libgig[2])
+        Backporter().backport_update(liblscp[0], BackportStatus.AutoUpdate.Value, liblscp[2])
 
     def _test_source(self):
         libgig  = ('libgig', 'etch', '0.1')

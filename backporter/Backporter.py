@@ -6,12 +6,18 @@
 
 import os
 import re
+import apt_pkg
+import telnetlib
+import socket
 
-from backporter.Config   import Config
+from backporter.BackporterConfig    import BackporterConfig
+from backporter.BackporterScheduler import BackporterScheduler
 from backporter.Database import Database
 from backporter.Logger   import Logger
 from backporter.Models   import *
 
+apt_pkg.InitConfig()
+apt_pkg.InitSystem()
 
 __all__ = ['Backporter']
 
@@ -26,12 +32,27 @@ class Backporter(object):
        return cls._instance  
 
     def init(self):
-       return
+
+        self.archs = BackporterConfig().get('config', 'archs').split()
+
+        # Create the directory structure
+        for dir in [self._get_workspace_dir(),
+                    self._get_apt_dir(),
+                    self._get_sources_dir(),
+                    self._get_chroots_dir(),
+                    os.path.join(self._get_apt_dir(),'lists'),
+                    os.path.join(self._get_apt_dir(),'lists','partial'),
+                    os.path.join(self._get_apt_dir(),'hooks'),
+                    os.path.join(self._get_apt_dir(),'partial')]:
+            if not os.path.exists(dir):
+                os.mkdir(dir)
+        
+        self._write_file(os.path.join(self._get_apt_dir(),'status'),'')
 
     def dist_add(self, name, type, url, comp):
        s = Dist()
        s.name = name
-       s.type = DistType.Bleeding.Value # FIX
+       s.type = type
        s.url  = url
        s.comp = comp
        s.insert()
@@ -44,7 +65,7 @@ class Backporter(object):
     def dist_update(self, name, type, url, comp):
        s = Dist()
        s.name = name
-       s.type = DistType.Bleeding.Value # FIX
+       s.type = type
        s.url  = url
        s.comp = comp
        s.update()
@@ -68,19 +89,6 @@ class Backporter(object):
        b.options = options
        b.update()
 
-    def source_add(self, package, dist, version):
-       s = Source()
-       s.package = package
-       s.dist   = dist
-       s.version = version
-       s.insert()
-
-    def source_remove(self, package, dist):
-       s = Source()
-       s.package = package
-       s.dist = dist
-       s.delete()
-        
     def source_update(self, package, dist, version):
        s = Source()
        s.package = package
@@ -92,10 +100,10 @@ class Backporter(object):
        self._gen_apt_sources_list()
        self._gen_apt_conf()
        self._gen_apt_hook()
-       os.system('apt-get update -c %s' %  os.path.join(self._get_apt_dir(),'apt.conf'))
+#       os.system('apt-get update -c %s' %  self._get_apt_conf())
        r = re.compile(' *([^ ]*)[ \|]*([^ ]*)[ \|]*[^ ]* *([^/]*)')
        for b in Backport.select():
-          madison = os.popen('apt-cache -c %s madison %s' %  (os.path.join(self._get_apt_dir(),'apt.conf'), b.package))
+          madison = os.popen('apt-cache -c %s madison %s' %  (self._get_apt_conf(), b.package))
           for line in madison.readlines():
              m = r.match(line)
              s = Source(self)
@@ -104,8 +112,69 @@ class Backporter(object):
              s.version = m.group(2)
              s.update()
 
+    def repack(self, package, dist):
+
+        b = Backport(package)
+        version = Source(package, b.bleeding()).version
+
+        if os.system ('cd %s && apt-get -c %s source %s=%s' % (
+                self._get_sources_dir(),
+                self._get_apt_conf(),
+                package,
+                version)) != 0:
+            raise BackporterError, 'Source for %s %s could not be fetched.' % (p.name, v.value)
+
+	if os.system ('echo | dch -b -v %s~%s1 --distribution %s-backports -c %s "Backport for %s"' % (
+                version,
+                dist,
+                dist,
+                self._get_changelog_file(package,version),
+                dist)) != 0:
+            raise BackporterError, 'Could not run dch for %s %s.' % (package, version)
+
+	if os.system ('cd %s && dpkg-source -b %s' % (
+                self._get_sources_dir(),
+                '%s-%s' % (package, self._upstream_version(version)))) != 0:
+            raise BackporterError, 'Source dir for %s %s not available.' % (p.name, v.value)
+
+    # Schedule build jobs for the packages that need to be backported
+    def schedule(self):
+
+        for b in Backport.select():
+
+            if b.status == BackportStatus.Freezed.Value:
+                continue
+
+            for d in Dist.select(DistType.Released.Value):
+
+                sr = Source(b.package, d.name)
+                sb = Source(b.package, b.bleeding())
+
+                if apt_pkg.VersionCompare(sb.version, sr.version) >= 1:
+
+                    for arch in self.archs:
+                        version = '%s~%s1' % (sb.version, d.name)
+                        status  = Scheduler().job_status(b.package,version,d.name,arch)
+                        continue
+                        if status:
+                            print b.package,version,d.name,arch,status
+                        else:
+                            print b.package,version,d.name,arch,'Not scheduled'
+
+    def _get_workspace_dir(self):
+        return BackporterConfig().get('config', 'workspace')
+
+    def _get_sources_dir(self):
+        return os.path.join(BackporterConfig().get('config', 'workspace'),'sources')
+
+    def _get_chroots_dir(self):
+        return os.path.join(BackporterConfig().get('config', 'workspace'),'chroot')
+
+    def _get_apt_conf(self):
+        return os.path.join(self._get_apt_dir(),'apt.conf')
+
     def _get_apt_dir(self):
-       return os.path.join(Config().get('config', 'workspace'), 'apt')
+       return os.path.join(BackporterConfig().get('config', 'workspace'), 'apt')
 
     def _gen_apt_sources_list(self):
        lines = []
@@ -149,7 +218,7 @@ class Backporter(object):
        lines.append('quiet "0";');
        lines.append('APT::Cache-Limit "26777216";')
 
-       path = os.path.join(Config().get('config', 'workspace'), 'apt', 'apt.conf')
+       path = os.path.join(BackporterConfig().get('config', 'workspace'), 'apt', 'apt.conf')
        data = "\n".join(lines)
 
        self._write_file(path, data)
@@ -158,10 +227,39 @@ class Backporter(object):
         lines = []
         lines.append('#!/bin/sh')
         lines.append('apt-get update')
-        path = os.path.join(Config().get('config', 'workspace'),'apt','hooks','D00apt_get_update')
+        path = os.path.join(BackporterConfig().get('config', 'workspace'),'apt','hooks','D00apt_get_update')
         data = "\n".join(lines)
         self._write_file(path, data)
         os.system('chmod 755 %s' % path)
+
+    def _get_changelog_file(self, package, version):
+        return os.path.join(
+            self._get_sources_dir(),
+            '%s-%s' % (package,self._upstream_version(version)),
+            'debian',
+            'changelog')
+
+    def _get_dsc_file(self, package, version):
+        return os.path.join(
+            self._get_sources_dir(),
+            '%s_%s.dsc' % (package,self._strip_epoch(version)))
+
+    def _get_diff_file(self, package, version):
+        return os.path.join(
+            self._get_sources_dir(),
+            '%s_%s.diff.gz' % (package,self._strip_epoch(version)))
+
+    def _strip_epoch(self, version):
+        if len(version.split(':')) >= 2:
+            return "".join(version.split(':')[1:])
+        else:
+            return version
+
+    def _strip_revision(self, version):
+        return version.split('-')[0]
+
+    def _upstream_version(self, version):
+        return self._strip_revision(version)
 
     def _write_file(self, path, data):
        try:
