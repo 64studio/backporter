@@ -52,17 +52,24 @@ class BackporterScheduler(object):
 
             for d in Dist.select(DistType.Released.Value):
 
-                sr = Source(b.package, d.name)
-                sb = Source(b.package, b.bleeding())
+                try:
+                    # Get the source in the relased dist
+                    sr = Source(b.package, d.name)
+                except Exception, e:
+                    # No source available
+                    sr = Source()
+                    sr.package = b.package
+                    sr.dist    = d.name
+                    sr.version = '0'
 
+                sb = Source(b.package, b.bleeding())
                 if Source.compare(sb, sr) >= 1:
 
-                    version = '%s~%s1' % (sb.version, d.name)
-                    
+                    version = '%s~%s1' % (sb.version, d.name)                    
+
                     for arch in self.archs:
 
                         (id, status) = self.job_status(b.package, version, d.name, arch)
-
                         if status != JobStatus.UNKNOWN:
                             continue # Already scheduled
 

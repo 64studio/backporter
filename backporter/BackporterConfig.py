@@ -38,12 +38,17 @@ class BackporterConfig(object, ConfigParser.ConfigParser):
 
         # add default sections
         self.add_section('config')
+        self.add_section('http')
 
         # add default values
         self.set('config', 'database',  '/var/lib/backporter')
         self.set('config', 'workspace', '/var/cache/backporter')
         self.set('config', 'log',       '/var/log/backporter')
         self.set('config', 'archs',     'i386 amd64')
+
+        self.set('http', 'ip',     '0.0.0.0')
+        self.set('http', 'port',     '8080')
+        self.set('http', 'templates', '/usr/share/backporter/templates')
 
         if not dontparse:
             self.reload()

@@ -46,6 +46,12 @@ class Backporter(object):
         
         self._write_file(os.path.join(self._get_apt_dir(),'status'),'')
 
+    def dist_list(self):
+        data = []
+        for d in Dist.select():
+            data.append((d.name, DistType[d.type], d.url, d.comp))
+        return data
+
     def dist_add(self, name, type, url, comp):
        s = Dist()
        s.name = name
@@ -66,6 +72,12 @@ class Backporter(object):
        s.url  = url
        s.comp = comp
        s.update()
+
+    def backport_list(self):
+        data = []
+        for b in Backport.select():
+            data.append((b.package, BackportStatus[b.status], b.options))
+        return data
 
     def backport_add(self, package, status, options):
        b = Backport()

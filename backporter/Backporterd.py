@@ -75,5 +75,3 @@ class Backporterd(Rebuildd):
             cls._instance = Rebuildd.__new__(cls)  
 
         return cls._instance  
-
-Backporterd().daemon()

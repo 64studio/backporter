@@ -42,14 +42,13 @@ class TestSequenceFunctions(unittest.TestCase):
         Backporter().dist_update(etch[0], etch[1], etch[2], 'main contrib')
 
     def _test_backport(self):
-        libgig  = ('libgig', 0, None)
-        liblscp = ('liblscp', 0, None)
-        bootsplash = ('bootsplash', BackportStatus.AutoUpdate.Value, None)
-        Backporter().backport_add(libgig[0], libgig[1], libgig[2])
-        Backporter().backport_add(liblscp[0], liblscp[1], liblscp[2])
-        Backporter().backport_add(bootsplash[0], bootsplash[1], bootsplash[2])
-        Backporter().backport_update(libgig[0], BackportStatus.AutoUpdate.Value, libgig[2])
-        Backporter().backport_update(liblscp[0], BackportStatus.AutoUpdate.Value, liblscp[2])
+        pkgs = [('libgig', 0, None),
+                ('liblscp', 0, None),
+                ('bootsplash', BackportStatus.AutoUpdate.Value, None),
+                ('sysv-rc-bootsplash', BackportStatus.AutoUpdate.Value, None)]
+
+        for pkg in pkgs:
+            Backporter().backport_add(pkg[0], pkg[1], pkg[2])
 
     def _test_source(self):
         libgig  = ('libgig', 'etch', '0.1')

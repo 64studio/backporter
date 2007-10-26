@@ -1,0 +1,26 @@
+$def with (dist, backports, archs)
+<table>
+  <thead>
+    <tr>
+      <th>Package</th>
+      <th>From</th>
+      <th>Bleeding</th>
+      <th>Released</th>
+      <th>Backport</th>
+      $for a in archs:
+          <th>$a</th>
+    </tr>
+  </thead>
+  <tbody>
+$for b in backports:
+    <tr>
+    <td ><a href="/job/foo">$b.package</a></td>
+    <td><a href="/job/foo">$b.origin</a></td>
+    <td><a href="/job/foo">$b.target</a></td>
+    <td><a href="/job/foo">$b.released</a></td>
+    <td><a href="/job/foo">$b.backport</a></td>
+    $for a in archs:
+        <td>$b.build[a]</td>
+    </tr>
+  </tbody>
+</table>

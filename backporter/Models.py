@@ -51,7 +51,6 @@ class Dist(object):
             source = Source()
             s.package  = b.package
             s.dist     = self.name
-            s.version  = None
             s.delete()
 
     def insert(self):
@@ -65,7 +64,7 @@ class Dist(object):
             s = Source()
             s.package  = b.package
             s.dist     = self.name
-            s.version  = None
+            s.version  = '0'
             s.insert()
 
         self.cnx.commit()
@@ -142,7 +141,7 @@ class Backport(object):
             s = Source()
             s.package = self.package
             s.dist   = d.name
-            s.version = None
+            s.version = '0'
             s.insert()
 
         self.cnx.commit()
@@ -196,7 +195,7 @@ class Source(object):
             cursor.execute("SELECT version FROM source WHERE package='%s' and dist='%s'" % (package, dist))
             row = cursor.fetchone()
             if not row:
-                raise SourceerError, 'Source %s does not exist.' % name
+                raise Exception, 'Source %s does not exist.' % name
             self.package = package
             self.dist   = dist
             self.version = row[0]
