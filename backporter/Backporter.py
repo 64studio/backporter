@@ -126,6 +126,11 @@ class Backporter(object):
         b = Backport(package)
         version = Source(package, b.bleeding()).version
 
+        # Clean previous builds
+        if os.path.exists(self._get_package_dir(package, version)):
+            os.system('rm -R %s' %  self._get_package_dir(package, version))
+
+        # Download the source
         if os.system ('cd %s && apt-get -c %s source %s=%s' % (
                 self._get_sources_dir(),
                 self._get_apt_conf(),
@@ -145,6 +150,9 @@ class Backporter(object):
                 self._get_sources_dir(),
                 '%s-%s' % (package, self._upstream_version(version)))) != 0:
             raise BackporterError, 'Source dir for %s %s not available.' % (p.name, v.value)
+
+        if os.system('rm -R %s' %  self._get_package_dir(package, version)) != 0:
+            raise BackporterError, 'Could not clean source package dir %' % self._get_package_dir(package, version)
 
     # Schedule build jobs for the packages that need to be backported
     def schedule(self):
@@ -223,10 +231,14 @@ class Backporter(object):
         self._write_file(path, data)
         os.system('chmod 755 %s' % path)
 
-    def _get_changelog_file(self, package, version):
+    def _get_package_dir(self, package, version):
         return os.path.join(
             self._get_sources_dir(),
-            '%s-%s' % (package,self._upstream_version(version)),
+            '%s-%s' % (package,self._upstream_version(version)))
+
+    def _get_changelog_file(self, package, version):
+        return os.path.join(
+            self._get_package_dir(package, version),
             'debian',
             'changelog')
 
@@ -250,7 +262,7 @@ class Backporter(object):
         return version.split('-')[0]
 
     def _upstream_version(self, version):
-        return self._strip_revision(version)
+        return self._strip_revision(self._strip_epoch(version))
 
     def _write_file(self, path, data):
        try:

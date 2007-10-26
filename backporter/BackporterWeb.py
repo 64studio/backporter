@@ -20,7 +20,6 @@
 
 import web
 import socket
-import PyHtmlTable
 
 from backporter.Backporter          import Backporter
 from backporter.BackporterScheduler import BackporterScheduler
@@ -68,13 +67,20 @@ class RequestDist:
             b.released = version_to_html(s.version)
             b.backport = '%s~%s1' % (b.target, dist)
             b.build    = {}
-            backports.append(b)
 
             for a in archs:
                 status = BackporterScheduler().job_status(b.package, b.backport, dist, a)
                 b.build[a] = JobStatus.whatis(status[1])
 
-        print render.base(page=render.dist(backports=backports, dist=dist, archs=archs), \
+            backports.append(b)
+
+        columns = ['Package'
+                   'From'
+                   'Bleeding'
+                   'Released'
+                   'Backport']
+
+        print render.base(page=render.dist(backports=backports, dist=dist, archs=archs, columns=columns), \
                 hostname=socket.gethostname(), dists=dists)
 
 

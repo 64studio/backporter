@@ -5,8 +5,9 @@
 #
 
 import os
-from pysqlite2 import dbapi2 as sqlite
+import threading
 
+from pysqlite2 import dbapi2 as sqlite
 from backporter.BackporterConfig import BackporterConfig
 from backporter.Logger import Logger
 
@@ -101,21 +102,27 @@ class Database(object):
         self.path = os.path.join(BackporterConfig().get('config', 'database'),'backporter.db')
         if not os.path.isfile(self.path): # Create new db
             self.create()
-        self.cnx = sqlite.connect(self.path)
 
     # Create all tables
     def create(self):
         Logger().debug("Creating new db at %s" % self.path)
-        self.cnx = sqlite.connect(self.path)
-        cursor = self.cnx.cursor()
+        cnx = self.get_cnx()
+        cursor = cnx.cursor()
         for table in schema:
             for stmt in self._to_sql(table):
                 cursor.execute(stmt)
-        self.cnx.commit()
-        self.cnx.close()
+        cnx.commit()
 
+    # Return a db connection
     def get_cnx(self):
-        return self.cnx
+        if not hasattr(self, 'cnx'):
+            self.cnx = {}
+        tname = threading.currentThread().getName()
+        if self.cnx.has_key(tname):
+            return self.cnx[tname]
+        else:
+            self.cnx[tname] = sqlite.connect(self.path, check_same_thread=False)
+            return self.cnx[tname]
 
     # Generate SQL CREATE statements
     def _to_sql(self,table):

@@ -27,3 +27,15 @@ td {
     text-align: left;
     vertical-align: top;
 }
+
+td#package {
+    font-weight: bold;
+    color: black;
+    text-align: left;
+}
+td#origin {
+    background: #F7C87C
+}
+td#bleeding {
+    background: #F7C87C
+}

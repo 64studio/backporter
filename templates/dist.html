@@ -1,4 +1,4 @@
-$def with (dist, backports, archs)
+$def with (dist, backports, archs, columns)
 <table>
   <thead>
     <tr>
@@ -6,7 +6,7 @@ $def with (dist, backports, archs)
       <th>From</th>
       <th>Bleeding</th>
       <th>Released</th>
-      <th>Backport</th>
+      <th>Last Schedule</th>
       $for a in archs:
           <th>$a</th>
     </tr>
@@ -14,11 +14,11 @@ $def with (dist, backports, archs)
   <tbody>
 $for b in backports:
     <tr>
-    <td ><a href="/job/foo">$b.package</a></td>
-    <td><a href="/job/foo">$b.origin</a></td>
-    <td><a href="/job/foo">$b.target</a></td>
-    <td><a href="/job/foo">$b.released</a></td>
-    <td><a href="/job/foo">$b.backport</a></td>
+    <td id="package">$b.package</td>
+    <td id="origin">$b.origin</td>
+    <td id="bleeding">$b.target</td>
+    <td>$b.released</td>
+    <td>$b.backport</td>
     $for a in archs:
         <td>$b.build[a]</td>
     </tr>

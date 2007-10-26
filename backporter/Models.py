@@ -12,8 +12,6 @@ from backporter.Database import Database
 from backporter.Logger   import Logger
 from backporter.Enum     import Enum
 from apt_pkg             import VersionCompare
-#apt_pkg.InitConfig()
-#apt_pkg.InitSystem()
 
 __all__ = ['Dist', 'DistType', 'Backport', 'BackportStatus','Source']
 

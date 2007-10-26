@@ -21,7 +21,7 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def _test_workspace(self):
         Backporter().update()
-        Backporter().schedule()
+#        Backporter().schedule()
 
     def _test_models(self):
         self._test_dist()
@@ -42,10 +42,11 @@ class TestSequenceFunctions(unittest.TestCase):
         Backporter().dist_update(etch[0], etch[1], etch[2], 'main contrib')
 
     def _test_backport(self):
-        pkgs = [('libgig', 0, None),
-                ('liblscp', 0, None),
-                ('bootsplash', BackportStatus.AutoUpdate.Value, None),
-                ('sysv-rc-bootsplash', BackportStatus.AutoUpdate.Value, None)]
+        pkgs = [('libgig', BackportStatus.Freezed.Value, None),
+                ('liblscp', BackportStatus.Freezed.Value, None),
+                ('bootsplash', BackportStatus.Freezed.Value, None),
+                ('ardour', BackportStatus.AutoUpdate.Value, None),
+                ('sysv-rc-bootsplash', BackportStatus.Freezed.Value, None)]
 
         for pkg in pkgs:
             Backporter().backport_add(pkg[0], pkg[1], pkg[2])

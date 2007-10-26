@@ -22,6 +22,9 @@ import sqlobject
 import sys
 import os
 
+import warnings
+warnings.simplefilter('ignore', FutureWarning)
+
 from backporter.BackporterConfig import BackporterConfig
 from backporter.Models import *
 from rebuildd.RebuilddConfig import RebuilddConfig
