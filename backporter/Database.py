@@ -65,7 +65,9 @@ schema = [
     Table('backport', key=('package'))[
         Column('package'),
         Column('status', type='int'),
-        Column('options')],
+        Column('options'),
+        Column('version'),
+        Column('stamp', type='timestamp')],
     Table('source', key=('package', 'dist'))[
         Column('package'),
         Column('dist'),
