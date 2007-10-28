@@ -1,26 +1,28 @@
-$def with (dist, backports, archs, columns)
+$def with (tds, dist, archs)
 <table>
   <thead>
     <tr>
       <th>Package</th>
       <th>From</th>
       <th>Bleeding</th>
-      <th>Released</th>
-      <th>Last Schedule</th>
+      <th>Official</th>
+      <th>Backport</th>
       $for a in archs:
           <th>$a</th>
+      <th>Last schedule</th>
     </tr>
   </thead>
   <tbody>
-$for b in backports:
+$for td in tds:
     <tr>
-    <td id="package">$b.package</td>
-    <td id="origin">$b.origin</td>
-    <td id="bleeding">$b.target</td>
-    <td>$b.released</td>
-    <td>$b.backport</td>
+    <td id="package"> $td['Package'][0] </td>
+    <td id="$td['From'][0]">     $td['From'][1]    </td>
+    <td id="$td['Bleeding'][0]">$td['Bleeding'][1]</td>
+    <td id="$td['Official'][0]">$td['Official'][1]</td>
+    <td id="$td['Backport'][0]">$td['Backport'][1]</td>
     $for a in archs:
-        <td>$b.build[a]</td>
+        <td>$td[a]</td>
+    <td>$td['Last schedule']</td>
     </tr>
   </tbody>
 </table>

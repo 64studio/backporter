@@ -38,7 +38,7 @@ class Backporterd(Rebuildd):
         if cls._instance is None:  
 
             path = {}
-            path['db']   = 'sqlite://' + os.path.join(BackporterConfig().get('config', 'database'), 'rebuildd.db')
+            path['db']   = 'sqlite://' + os.path.join(BackporterConfig().get('config', 'database'), 'backporter.db')
             path['log']  = os.path.join(BackporterConfig().get('config', 'log'), 'rebuildd.log')
             path['ws']   = os.path.join(BackporterConfig().get('config', 'workspace'), 'sources')
             path['chroot']   = os.path.join(BackporterConfig().get('config', 'workspace'), 'chroots')
@@ -63,7 +63,7 @@ class Backporterd(Rebuildd):
                     os.mkdir(path['ws'])
 
             # Init the db
-            if not os.path.isfile(os.path.join(BackporterConfig().get('config', 'database'), 'rebuildd.db')):
+            if not os.path.isfile(os.path.join(BackporterConfig().get('config', 'database'), 'backporter.db')):
                 try:
                     sqlobject.sqlhub.processConnection = \
                         sqlobject.connectionForURI(RebuilddConfig().get('build', 'database_uri'))

@@ -84,6 +84,8 @@ class Backporter(object):
        b.package = package
        b.status    = status
        b.options = options
+       b.version = '0'
+       b.stamp   = None
        b.insert()
 
     def backport_remove(self, package):

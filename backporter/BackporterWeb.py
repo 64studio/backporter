@@ -23,12 +23,15 @@ import socket
 
 from backporter.Backporter          import Backporter
 from backporter.BackporterScheduler import BackporterScheduler
-from backporter.BackporterConfig import BackporterConfig
-from backporter.Models           import *
+from backporter.BackporterConfig    import BackporterConfig
+from backporter.Models              import *
+from backporter.Enum                import Enum
 
-from rebuildd.JobStatus          import JobStatus
+#from rebuildd.JobStatus          import JobStatus
 
 render = web.template.render(BackporterConfig().get('http', 'templates'),cache=False)
+
+Color = Enum('Bleeding','Official','Newer','Backport','OutOfDate')
 
 class RequestIndex:
 
@@ -47,40 +50,60 @@ def version_to_html(text):
     if text == '0':
         return '-'
     else:
+        return text[0:15]
+
+def status_to_html(text):
+    if text == 'UNKNOWN':
+        return '-'
+    else:
         return text
 
 class RequestDist:
-
 
     def GET(self, dist):
 
         dists = Dist.select(DistType.Released.Value)
         archs = BackporterConfig().get('config', 'archs').split()
 
-        backports = []
+        tds = []
 
+        # Iter over all backports
         for b in Backport.select():
 
-            s = Source(b.package, dist)
-            b.origin   = b.bleeding()
-            b.target   = version_to_html(Source(b.package, b.bleeding()).version)
-            b.released = version_to_html(s.version)
-            b.backport = '%s~%s1' % (b.target, dist)
-            b.build    = {}
+            s = Source(b.package, dist)          # Official version
+            t = Source(b.package, b.bleeding())  # Bleeding edge
+
+            td = {}
+            td['Package']  = (b.package, 'white')
+            td['From']     = (b.bleeding(), b.bleeding())
+            td['Bleeding'] = (Color.Bleeding, version_to_html(t.version))
+            if Source.compare(t,s) == 0:
+                td['Official'] = (Color.Bleeding, version_to_html(s.version))
+            if Source.compare(t,s) >= 1:
+                td['Official'] = (Color.Official, version_to_html(s.version))
+            if Source.compare(t,s) <= -1:
+                td['Official'] = (Color.Newer, version_to_html(s.version))
+            if b.version == '%s~%s1' % (t.version, dist):
+                td['Backport'] = (Color.Backport,  version_to_html(b.version))
+            elif b.version == '0':
+                td['Backport'] = (Color.Official,  version_to_html(b.version))
+            else:
+                td['Backport'] = (Color.OutOfDate, version_to_html(b.version))
+            td['Last schedule'] = b.stamp[:-7]
+
+#            try:
+                # Check if we tried already
+#                p = Package(b.package, t.version)
+#            except Exception, e:
+#                p = Package()
 
             for a in archs:
-                status = BackporterScheduler().job_status(b.package, b.backport, dist, a)
-                b.build[a] = JobStatus.whatis(status[1])
+#                status = BackporterScheduler().job_status(b.package, b.version, dist, a)
+#                td[a] = status_to_html(JobStatus.whatis(status[1]))
+                td[a] = "-"
+            tds.append(td)
 
-            backports.append(b)
-
-        columns = ['Package'
-                   'From'
-                   'Bleeding'
-                   'Released'
-                   'Backport']
-
-        print render.base(page=render.dist(backports=backports, dist=dist, archs=archs, columns=columns), \
+        print render.base(page=render.dist(tds=tds, dist=dist, archs=archs), \
                 hostname=socket.gethostname(), dists=dists)
 
 
@@ -103,3 +126,6 @@ class BackporterWeb:
         web.httpserver.runsimple(web.webapi.wsgifunc(web.webpyfunc(self.urls, globals(), False)),
                                  (BackporterConfig().get('http', 'ip'),
                                   BackporterConfig().getint('http', 'port')))
+
+
+#select package.name, package.version, job.arch ,job.status from package inner join job on package.id=job.package_id where job.dist='etch';

@@ -8,6 +8,8 @@ import os
 import re
 import telnetlib
 import socket
+import datetime
+
 import warnings
 warnings.simplefilter('ignore', FutureWarning)
 
@@ -16,9 +18,11 @@ from backporter.Database import Database
 from backporter.Logger   import Logger
 from backporter.Models   import *
 
-from rebuildd.RebuilddConfig import RebuilddConfig
-from rebuildd.Job            import Job, JobStatus
-from rebuildd.Package        import Package
+#from rebuildd.JobStatus          import JobStatus
+#from rebuildd.Job                import Job
+#from rebuildd.Package import rebuildd.Package
+
+from pysqlite2 import dbapi2 as sqlite
 
 __all__ = ['BackporterScheduler']
 
@@ -44,6 +48,10 @@ class BackporterScheduler(object):
     # Schedule build jobs for the packages that need to be backported
     def schedule(self):
 
+        path = os.path.join(BackporterConfig().get('config', 'database'),'rebuildd.db')
+        cnx = sqlite.connect(path, check_same_thread=False)
+        cursor = cnx.cursor()
+
         from backporter.BackporterScheduler import BackporterScheduler
         for b in Backport.select():
 
@@ -63,22 +71,39 @@ class BackporterScheduler(object):
                     sr.version = '0'
 
                 sb = Source(b.package, b.bleeding())
+
+                # If the bleeding edge version is greater than the official, then try
+                # to schedule a new job
                 if Source.compare(sb, sr) >= 1:
+                    version = '%s~%s1' % (sb.version, d.name)
+                    try:
+                        # Get the package element
+                        p = Package(b.package,version)
+                    except Exception, e:
+                        # No such package available, insert it
+                        p = Package()
+                        p.name    = b.package
+                        p.version = version
+                        p.insert()
+                        p = Package(b.package,version)
 
-                    version = '%s~%s1' % (sb.version, d.name)                    
-
+                    # Iter for each arch
                     for arch in self.archs:
-
-                        (id, status) = self.job_status(b.package, version, d.name, arch)
-                        if status != JobStatus.UNKNOWN:
+                        jobs = Job.select(package_id=p.id, arch=arch)
+                        if len(jobs) >= 1:
                             continue # Already scheduled
 
                         # Add a new job
-                        job = Job(package=id, dist=d.name, arch=arch)
-                        job.status = JobStatus.WAIT
-                        job.arch = arch
-                        job.mailto = None
+                        j = Job()
+                        j.status = 100
+                        j.package_id = p.id
+                        j.dist = d.name
+                        j.arch = arch
+                        j.insert()
 
+                        b.version = version
+                        b.stamp = datetime.datetime.now()
+                        b.update()
 
     def job_status(self, package, version, dist, arch):
 

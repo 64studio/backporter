@@ -72,6 +72,23 @@ schema = [
         Column('package'),
         Column('dist'),
         Column('version')],
+    Table('job', key=('id'))[
+        Column('id',type='integer'),
+        Column('status',type='int'),
+        Column('mailto'),
+        Column('package_id', type='int CONSTRAINT package_id_exists REFERENCES package(id) ON DELETE CASCADE'),
+        Column('dist'),
+        Column('arch'),
+        Column('creation_date', type='timestamp'),
+        Column('status_changed', type='timestamp'),
+        Column('build_start', type='timestamp'),
+        Column('build_end', type='timestamp'),
+        Column('host')],
+    Table('package', key=('id'))[
+        Column('id', type='integer'),
+        Column('name'),
+        Column('version'),
+        Column('priority')],
 ]
 
 url = {'debian':'http://ftp.debian.org/debian'}
@@ -89,7 +106,6 @@ data = (('dist',
 ##
 ## Database class
 ##
-
 class Database(object):
 
     _instance = None 

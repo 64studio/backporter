@@ -33,9 +33,24 @@ td#package {
     color: black;
     text-align: left;
 }
-td#origin {
+
+td#sid {
+    background: #FFFF87
+}
+
+td#local {
+    background: #FFBE9E
+}
+
+td#Bleeding {
     background: #F7C87C
 }
-td#bleeding {
-    background: #F7C87C
+td#Newer {
+    background: #DB92C9
+}
+td#Backport {
+    background: #E6E67A
+}
+td#OutOfDate {
+    background: #FFFF87
 }
