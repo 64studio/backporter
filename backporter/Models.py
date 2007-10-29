@@ -9,8 +9,10 @@ import re
 import string
 import apt_pkg
 import datetime
+import os
 
 from backporter.Database import Database
+from backporter.BackporterConfig import BackporterConfig
 from backporter.Logger   import Logger
 from backporter.Enum     import Enum
 
@@ -49,7 +51,7 @@ class Dist(object):
         self.cnx.commit()
 
         for b in Backport.select():
-            source = Source()
+            s = Source()
             s.package  = b.package
             s.dist     = self.name
             s.delete()
@@ -111,7 +113,7 @@ class Backport(object):
                 raise BackporterError, 'Backport %s does not exist.' % name
             self.package = package
             self.status  = row[0]
-            self.options = row[1]
+            self.options = eval(row[1])
             self.version = row[2]
             self.stamp   = row[3]
         else:
@@ -135,15 +137,19 @@ class Backport(object):
             s.dist   = d.name
             s.delete()
 
+            for j in Job.join(dist=d.name, package=self.package):
+                j.delete()
+
+
     def insert(self):
         assert self.package, 'Cannot create backport with no package'
         self.package = self.package.strip()
         cursor = self.cnx.cursor()
         Logger().debug("Creating new backport '%s'" % self.package)
-        cursor.execute("INSERT INTO backport VALUES ('%s',%d, '%s', '%s', '%s')" % (
+        cursor.execute('INSERT INTO backport VALUES ("%s",%d, "%s", "%s", "%s")' % (
                 self.package,
                 self.status,
-                self.options,
+                str(self.options),
                 self.version,
                 self.stamp))
 
@@ -161,9 +167,9 @@ class Backport(object):
         self.package = self.package.strip()
         cursor = self.cnx.cursor()
         Logger().debug('Updating backport "%s %s"' % (self.package,self.version))
-        cursor.execute("UPDATE backport SET status=%d, options='%s', version='%s', stamp='%s' WHERE package='%s'" % (
+        cursor.execute('UPDATE backport SET status=%d, options="%s", version="%s", stamp="%s" WHERE package="%s"' % (
                 self.status,
-                self.options,
+                str(self.options),
                 self.version,
                 self.stamp,
                 self.package))
@@ -181,7 +187,7 @@ class Backport(object):
             b = cls()
             b.package = package
             b.status  = status
-            b.options = options
+            b.options = eval(options)
             b.version = version
             b.stamp   = stamp
             backports.append(b)
@@ -211,7 +217,7 @@ class Source(object):
             cursor.execute("SELECT version FROM source WHERE package='%s' and dist='%s'" % (package, dist))
             row = cursor.fetchone()
             if not row:
-                raise Exception, 'Source %s does not exist.' % name
+                raise Exception, 'Source %s does not exist.' % package
             self.package = package
             self.dist   = dist
             self.version = row[0]
@@ -269,7 +275,7 @@ class Source(object):
 
 class Package(object):
 
-    def __init__(self, name=None, version=None):
+    def __init__(self, name=None, version=None, id=None):
         self.cnx = Database().get_cnx()
         if name != None and version != None:
             cursor = self.cnx.cursor()
@@ -281,6 +287,15 @@ class Package(object):
             self.name     = name
             self.version  = version
             self.priority = row[1]
+        elif id != None:
+            cursor = self.cnx.cursor()
+            cursor.execute("SELECT name, version, priority FROM package WHERE id=%d" % id)
+            row = cursor.fetchone()
+            if not row:
+                raise Exception, 'Package %s does not exist.' % name
+            self.name     = row[0]
+            self.version  = row[1]
+            self.priority = row[2]
         else:
             self.id       = None
             self.name     = None
@@ -309,9 +324,12 @@ class Package(object):
                            (self.name, self.version, self.priority, self.id))
         self.cnx.commit()
 
-    def select(cls):
+    def select(cls, name=None):
         cursor = Database().get_cnx().cursor()
-        cursor.execute("SELECT id, name, version, priority FROM package")
+        if name:
+            cursor.execute("SELECT id, name, version, priority FROM package where name='%s'" % name)
+        else:
+            cursor.execute("SELECT id, name, version, priority FROM package")
         packages = []
         for id, name, version, priority in cursor:
             p = cls()
@@ -325,11 +343,11 @@ class Package(object):
 
 class Job(object):
 
-    def __init__(self, package_id=None, dist=None, arch=None):
+    def __init__(self, id=None):
         self.cnx = Database().get_cnx()
-        if package_id and dist and arch:
+        if id:
             cursor = self.cnx.cursor()
-            cursor.execute("SELECT status, mailto, package_id, dist, arch, creation_date, status_changed, build_start, build_end, host FROM job WHERE package_id=%d and dist='%s' and arch='%s'" % (package_id, dist, arch))
+            cursor.execute("SELECT status, mailto, package_id, dist, arch, creation_date, status_changed, build_start, build_end, host FROM job WHERE id=%d" % (id))
             row = cursor.fetchone()
             if not row:
                 raise Exception, 'Job %d does not exist.' % id
@@ -341,8 +359,8 @@ class Job(object):
             self.arch           = row[4]
             self.creation_date  = row[5]
             self.status_changed = row[6]
-            self.build_end      = row[7]
-            self.build_start    = row[8]
+            self.build_start    = row[7]
+            self.build_end      = row[8]
             self.host           = row[9]
         else:
             self.status         = None
@@ -397,10 +415,17 @@ class Job(object):
 
     def select(cls, package_id=None, dist=None, arch=None):
         cursor = Database().get_cnx().cursor()
+        stmt = "SELECT id, status, mailto, package_id, dist, arch, creation_date, status_changed, build_start, build_end, host FROM job"
         if package_id and dist and arch:
-            cursor.execute("SELECT id, status, mailto, package_id, dist, arch, creation_date, status_changed, build_start, build_end, host FROM job WHERE package_id=%d and dist='%s' and arch='%s'" % (package_id, dist, arch))
+            cursor.execute("%s WHERE package_id=%d and dist='%s' and arch='%s'" % (stmt, package_id, dist, arch))
+        elif package_id:
+            cursor.execute("%s WHERE package_id=%d" % (stmt, package_id))
+        elif dist:
+            cursor.execute("%s WHERE dist='%s'" % (stmt, dist))
+        elif package_id:
+            cursor.execute("%s WHERE package_id=%d" % (stmt, package_id))
         else:
-            cursor.execute("SELECT id, status, mailto, package_id, dist, arch, creation_date, status_changed, build_start, build_end, host FROM job")
+            cursor.execute("%s" % stmt)
         jobs = []
         for id, status, mailto, package_id, dist, arch, creation_date, status_changed, build_start, build_end, host in cursor:
             j = cls()
@@ -418,3 +443,36 @@ class Job(object):
             jobs.append(j)
         return jobs
     select = classmethod(select)
+
+    def join(cls, dist=None, package=None):
+        cursor = Database().get_cnx().cursor()
+        stmt='SELECT job.id, package.name, package.version, job.arch, job.status FROM job INNER JOIN package ON job.package_id=package.id'
+        if dist != None and package != None:
+            cursor.execute("%s WHERE job.dist='%s' and package.name='%s' ORDER BY job.id DESC" % (stmt, dist, package))
+        elif dist != None:
+            cursor.execute("%s WHERE job.dist='%s' ORDER BY job.id DESC" % (stmt, dist))
+        else:
+            cursor.execute("%s ORDER BY job.id DESC" % stmt)
+        jobs = []
+        for id, package, version, arch ,status in cursor:
+            j = cls()
+            j.id       = id
+            j.package = package
+            j.version = version
+            j.arch = arch
+            j.status = status
+            jobs.append(j)
+        return jobs
+    join = classmethod(join)
+
+    def logfile(self):
+        """Compute and return logfile name"""
+
+        log_path = os.path.join(BackporterConfig().get('config', 'workspace'), 'log')
+        date = self.creation_date.replace('-','').replace(':','').replace(' ','-')[0:15]
+        build_log_file = "%s/%s_%s-%s-%s-%s.%s.log" % (log_path,
+                                           self.package.name, self.package.version,
+                                           self.dist, self.arch,
+                                           date,
+                                           self.id)
+        return build_log_file

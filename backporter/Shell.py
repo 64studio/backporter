@@ -18,14 +18,20 @@ class Shell(cmd.Cmd):
         if line == 'help':
             self.help_help(line)
             return
-        cmd.Cmd.onecmd(self,line)
+        cmd.Cmd.onecmd(self, line)
 
     ##
     ## Available Commands
     ##
-    _help_help = [('help', 'Show documentation')]
 
     ##  Help
+    _help_help = [('help', 'Show documentation')]
+
+    def do_help(self, line):
+        arg = self._tokenize(line)
+        for help in getattr(self, "_help_" + arg[0]):
+            self._print_help(help)
+
     def help_help(self,line):
         print self.doc_header
         print
@@ -36,11 +42,6 @@ class Shell(cmd.Cmd):
             if name in ['do_EOF', 'do_help']:
                 continue
             print "   %s" % name[3:]
-
-    def do_help(self, line):
-        arg = self._tokenize(line)
-        for help in getattr(self, "_help_" + arg[0]):
-            self._print_help(help)
 
     ## Dist
     _help_dist_list   = ('dist list', 'Show dists')
@@ -76,13 +77,14 @@ class Shell(cmd.Cmd):
 
         Backporter().dist_remove(arg[0])
 
-    ## Dist
+    ## Backports
     _help_backport_list   = ('backport list', 'Show backports')
-    _help_backport_add    = ('backport add <package> [<status>] [<options>]', 'Add a backport')
+    _help_backport_add    = ('backport add <package> [<mode>]', 'Add a backport')
+    _help_backport_set    = ('backport set <package> [arch <arch>|dist <dist>]', 'Set backport options ')
     _help_backport_remove = ('backport remove <package>', 'Remove a backport')
     _help_backport = [_help_backport_list,
                   _help_backport_remove,
-                  _help_backport_add]
+                  _help_backport_add, _help_backport_set]
 
     def do_backport(self, line):
         arg = self._tokenize(line)
@@ -111,12 +113,52 @@ class Shell(cmd.Cmd):
 
         Backporter().backport_add(package, status, options)
 
+    def _do_backport_set(self, arg):
+
+        if not len(arg) in [3,5]:
+            return self._print_help(self._help_backport_set)
+
+        if not arg[1] in ['arch','dist']:
+            return self._print_help(self._help_backport_set)
+
+        pkg = arg[0]
+        key = arg[1]
+        val = arg[2]
+
+        options = {}
+        options[key] = val
+
+        if len(arg) > 3:
+            if arg[3] not in ['arch','dist']:
+                return self._print_help(self._help_backport_options)
+            key = arg[3]
+            val = arg[4]
+            options[key] = val
+
+        Backporter().backport_update(pkg, options=options)
+
     def _do_backport_remove(self, arg):
 
         if not len(arg) == 1:
             return self._print_help(self._help_backport_add)
 
-        Backporter().dist_remove(arg[0])
+        Backporter().backport_remove(arg[0])
+
+    ## Jobs
+    _help_job_list   = ('job list <dist>', 'Show jobs for <dist>')
+    _help_job = [_help_job_list]
+
+    def do_job(self, line):
+        arg = self._tokenize(line)
+        if len(arg) == 0:
+            return self.do_help('job')
+        return getattr(self, "_do_job_" + arg[0])(arg[1:])
+
+    def _do_job_list(self, arg):
+
+        if len(arg) != 1:
+            return self._print_help(self._help_job_list)            
+        self._print_listing(['Job', 'Package', 'Version', 'Arch', 'Status'], Backporter().job_list(arg[0]))
 
     ## Download and repack source
     _help_repack = [('repack <name> <dist>', 'Download and repack a source package')]

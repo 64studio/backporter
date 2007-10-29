@@ -1,0 +1,49 @@
+$def with (jobs)
+<table id="list">
+  <thead>
+    <tr>
+      <th>Id</th>
+      <th>Package</th>
+      <th>Version</th>
+      <th>Distribution/Architecture</th>
+      <th>Creation date</th>
+      <th>Mail to</th>
+      <th>Build status</th>
+      <th>Host</th>
+      <th>Build start</th>
+      <th>Build end</th>
+    </tr>
+  </thead>
+  <tbody>
+$for job in jobs:
+    <tr>
+    <td><a href="/job/$job.id">$job.id</a></td>
+    <td><a href="/package/$job.package.name">$job.package.name</a></td>
+    <td><a href="/package/$job.package.name/$job.package.version">$job.package.version</a></td>
+    <td><a href="/dist/$job.dist/arch/$job.arch">$job.dist/$job.arch</a></td>
+    <td>$job.creation_date</td>
+    <td>$job.mailto</td>
+    $if job.status == 0:
+        <td bgcolor="gray" align="center">Duh?</td>
+    $if job.status == 100:
+        <td bgcolor="yellow" align="center">WAIT</td>
+    $if job.status == 150:
+        <td bgcolor="yellow" align="center">WAIT_LOCKED</td>
+    $if job.status == 200:
+        <td bgcolor="orange" align="center">BUILDING</td>
+    $if job.status == 300:
+        <td bgcolor="red" align="center">BUILD_FAILED</td>
+    $if job.status == 400:
+        <td bgcolor="green" align="center">BUILD_OK</td>
+    $if job.status == 800:
+        <td bgcolor="red" align="center">CANCELED</td>
+    $if job.status == 900:
+        <td bgcolor="red" align="center">FAILED</td>
+    $if job.status == 1000:
+        <td bgcolor="green" align="center">OK</td>
+    <td><a href="/host/$job.host"></a>$job.host</td>
+    <td>$job.build_start</td>
+    <td>$job.build_end</td>
+    </tr>
+  </tbody>
+</table>

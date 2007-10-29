@@ -93,11 +93,12 @@ class Backporter(object):
        b.package = package
        b.delete()
 
-    def backport_update(self, package, status, options):
-       b = Backport()
-       b.package = package
-       b.status  = status
-       b.options = options
+    def backport_update(self, package, status=None, options=None):
+       b = Backport(package)
+       if status:
+           b.status  = status
+       if options:
+           b.options = options
        b.update()
 
     def source_update(self, package, dist, version):
@@ -107,11 +108,40 @@ class Backporter(object):
        s.version = version
        s.update()
 
+    def package_add(self, package, version, priority):
+       p = Package()
+       p.name     = package
+       p.version  = version
+       p.priority = priority
+       p.insert()
+
+    def job_add(self, package_id, dist, arch):
+       j = Job()
+       j.package_id = package_id
+       j.dist       = dist
+       j.arch       = arch
+       j.status     = 0
+       j.insert()
+
+    def job_list(self, dist):
+        data = []
+        for j in Job.join(dist=dist):
+            data.append((j.id, j.package, j.version, j.arch, j.status))
+        return data
+
     def update(self):
        self._gen_apt_sources_list()
        self._gen_apt_conf()
-       self._gen_apt_hook()
-       os.system('apt-get update -c %s' %  self._get_apt_conf())
+       self._gen_pbuilder_hook()
+       for d in Dist.select(type=DistType.Released.Value):
+           dir = os.path.join(self._get_result_dir(), d.name)
+           if not os.path.exists(dir):
+               os.mkdir(dir)           
+           for arch in BackporterConfig().get('config', 'archs').split():
+               self._gen_pbuilder_config(d.name, arch)
+               if not os.path.exists(os.path.join(dir, arch)):
+                   os.mkdir(os.path.join(dir, arch))
+#       os.system('apt-get update -c %s > /dev/null' %  self._get_apt_conf())
        r = re.compile(' *([^ ]*)[ \|]*([^ ]*)[ \|]*[^ ]* *([^/]*)')
        for b in Backport.select():
           madison = os.popen('apt-cache -c %s madison %s' %  (self._get_apt_conf(), b.package))
@@ -169,7 +199,10 @@ class Backporter(object):
         return os.path.join(BackporterConfig().get('config', 'workspace'),'sources')
 
     def _get_chroots_dir(self):
-        return os.path.join(BackporterConfig().get('config', 'workspace'),'chroot')
+        return os.path.join(BackporterConfig().get('config', 'workspace'),'chroots')
+
+    def _get_result_dir(self):
+        return os.path.join(BackporterConfig().get('config', 'workspace'),'result')
 
     def _get_apt_conf(self):
         return os.path.join(self._get_apt_dir(),'apt.conf')
@@ -224,7 +257,8 @@ class Backporter(object):
 
        self._write_file(path, data)
 
-    def _gen_apt_hook(self):
+    # Update APT sources before building
+    def _gen_pbuilder_hook(self):
         lines = []
         lines.append('#!/bin/sh')
         lines.append('apt-get update')
@@ -232,6 +266,28 @@ class Backporter(object):
         data = "\n".join(lines)
         self._write_file(path, data)
         os.system('chmod 755 %s' % path)
+
+    # Return appropriate pbuilderrc
+    def _gen_pbuilder_config(self, dist, arch):
+        config = (('BASETGZ', os.path.join(self._get_chroots_dir(), '%s-%s.tgz' % (dist, arch)) ),
+                  ('BUILDRESULT', os.path.join(self._get_result_dir(), dist, arch)),
+                  ('USEPROC', 'yes'),
+                  ('USEDEVPTS','yes'),
+                  ('USEDEVFS', 'no'),
+                  ('HOOKDIR', os.path.join(BackporterConfig().get('config', 'workspace'),'apt','hooks')),
+                  ('DISTRIBUTION', dist),
+                  ('APTCACHE', '/var/cache/pbuilder/cache'),
+                  ('APTCACHEHARDLINK', 'yes'),
+                  ('BUILDUSERID','1234'),
+                  ('BINDMOUNTS',''),
+                  ('DEBOOTSTRAPOPTS[0]', '--variant=buildd'))
+
+        lines = []
+        path = os.path.join(BackporterConfig().get('config', 'workspace'),'apt','pbuilderrc-%s-%s' % (dist, arch))
+        for name, value in config:
+            lines.append('%s=%s' % (name, value))
+        data = "\n".join(lines)
+        self._write_file(path, data)
 
     def _get_package_dir(self, package, version):
         return os.path.join(

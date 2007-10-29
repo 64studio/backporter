@@ -44,13 +44,18 @@ class Backporterd(Rebuildd):
             path['chroot']   = os.path.join(BackporterConfig().get('config', 'workspace'), 'chroots')
             path['logs'] = os.path.join(BackporterConfig().get('config', 'workspace'), 'log')
             path['hook'] = os.path.join(BackporterConfig().get('config', 'workspace'), 'apt', 'hooks')
+            path['result'] = os.path.join(BackporterConfig().get('config', 'workspace'), 'result')
+            path['apt'] = os.path.join(BackporterConfig().get('config', 'workspace'), 'apt')
 
+            pbuilder = 'sudo pbuilder build --configfile %s/pbuilderrc-%%s-%%s %%s_%%s.dsc' % (path['apt'])
+            dput     = 'dput local %s/%%s/%%s/%%s_%%s_%%s.changes'  % (path['result'])
             RebuilddConfig().config_file = "/dev/null"
             RebuilddConfig().set('build', 'database_uri', path['db'])
             RebuilddConfig().set('log', 'file', path['log'])
             RebuilddConfig().set('build', 'work_dir', path['ws'])
             RebuilddConfig().set('build', 'source_cmd', 'backporter repack %s %s %s')
-            RebuilddConfig().set('build', 'build_cmd', 'sudo pbuilder build --hookdir %s --basetgz %s/%%s-%%s.tgz %%s_%%s.dsc' % (path['hook'], path['chroot']))
+            RebuilddConfig().set('build', 'build_cmd', pbuilder)
+            RebuilddConfig().set('build', 'post_build_cmd', dput)
             RebuilddConfig().set('build', 'dists', " ".join([d.name for d in Dist.select()]))
             RebuilddConfig().set('build', 'archs', BackporterConfig().get('config', 'archs'))
             RebuilddConfig().set('build', 'max_threads', '1')
@@ -61,6 +66,8 @@ class Backporterd(Rebuildd):
                     os.mkdir(path['logs'])
             if not os.path.exists(path['ws']):
                     os.mkdir(path['ws'])
+            if not os.path.exists(path['result']):
+                    os.mkdir(path['result'])
 
             # Init the db
             if not os.path.isfile(os.path.join(BackporterConfig().get('config', 'database'), 'backporter.db')):
