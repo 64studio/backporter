@@ -23,7 +23,7 @@ BackportPolicy = Enum('Dummy', 'Never', 'Once', 'Always', 'Smart')
 
 class Backport(object):
 
-    def __init__(self, pkg=None, dist=None, newid=False):
+    def __init__(self, pkg=None, dist=None):
         self.cnx  = Database().get_cnx()
         self.cols = Database().get_col('backport')
         if pkg and dist:
@@ -39,17 +39,13 @@ class Backport(object):
             for col in self.cols:
                 setattr(self, col, row[i])
                 i += 1
-            self.archs=eval(row[7])
+            self.archs=eval(row[6])
         else:
             for col in self.cols:
                 setattr(self, col, None)
             self.policy   = BackportPolicy.Smart.Value
             self.progress = -1
             self.archs    = []
-            if newid:
-                cursor = self.cnx.cursor()
-                cursor.execute("SELECT count(*) FROM backport")
-                self.id = cursor.fetchone()[0] + 1
 
     def delete(self):
         assert self.pkg and self.dist, 'Cannot deleting non-existent backport'
@@ -63,7 +59,7 @@ class Backport(object):
         cursor = self.cnx.cursor()
         Logger().debug("Creating new backport %s/%s" % (self.pkg, self.dist))
         cursor.execute('INSERT INTO backport (%s) VALUES ("%s", "%s", "%s", "%s", "%s", "%s", "%s", %d, %d)' % (
-                ",".join(self.cols[1:]), self.pkg, self.dist, self.origin, self.bleeding, self.official,
+                ",".join(self.cols), self.pkg, self.dist, self.origin, self.bleeding, self.official,
                 self.target, str(self.archs), self.progress, self.policy))
         self.cnx.commit()
 
@@ -85,13 +81,16 @@ class Backport(object):
 
         self.cnx.commit()
 
-    def select(cls):
+    def select(cls, orderBy=None):
         cursor = Database().get_cnx().cursor()
-        cursor.execute("SELECT %s FROM backport" % ",".join(Database().get_col('backport')))
+        cols = ",".join(Database().get_col('backport'))
+        if orderBy:
+            cursor.execute("SELECT %s FROM backport ORDER BY %s" % (cols, orderBy))
+        else:
+            cursor.execute("SELECT %s FROM backport" % cols)
         backports = []
-        for (id, pkg, dist, origin, bleeding, official, target, archs, progress, policy) in cursor:
+        for (pkg, dist, origin, bleeding, official, target, archs, progress, policy) in cursor:
             b = cls()
-            b.id       = id
             b.pkg      = pkg
             b.dist     = dist
             b.origin   = origin
