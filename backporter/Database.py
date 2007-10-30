@@ -1,14 +1,26 @@
-# -*- coding: utf-8 -*-
+# backporter - Backport debian packages
 #
-# Copyright (C) 2007 Ekanayaka Free
-# All rights reserved.
+# (c) 2007 - Free Ekanayaka <free@64studio.com>
+#
+#   This software is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; version 2 dated June, 1991.
+#
+#   This software is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this software; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 #
 
 import os
 import threading
 
 from pysqlite2 import dbapi2 as sqlite
-from backporter.BackporterConfig import BackporterConfig
+from rebuildd.RebuilddConfig import RebuilddConfig
 from backporter.Logger import Logger
 
 __all__ = ['Database']
@@ -57,51 +69,18 @@ class Index(object):
 
 schema = [
     # Common
-    Table('dist', key='name')[
-        Column('name'),
-        Column('type', type='int'),
-        Column('url'),
-        Column('comp')],
-    Table('backport', key=('package'))[
-        Column('package'),
-        Column('status', type='int'),
-        Column('options'),
-        Column('version'),
-        Column('stamp', type='timestamp')],
-    Table('source', key=('package', 'dist'))[
-        Column('package'),
-        Column('dist'),
-        Column('version')],
-    Table('job', key=('id'))[
-        Column('id',type='integer'),
-        Column('status',type='int'),
-        Column('mailto'),
-        Column('package_id', type='int CONSTRAINT package_id_exists REFERENCES package(id) ON DELETE CASCADE'),
-        Column('dist'),
-        Column('arch'),
-        Column('creation_date', type='timestamp'),
-        Column('status_changed', type='timestamp'),
-        Column('build_start', type='timestamp'),
-        Column('build_end', type='timestamp'),
-        Column('host')],
-    Table('package', key=('id'))[
-        Column('id', type='integer'),
-        Column('name'),
-        Column('version'),
-        Column('priority')],
+    Table('backport', key=('id'))[
+        Column('id', type='integer'),  # Primary key
+        Column('pkg'),                 # Package name
+        Column('dist'),                # Dist name
+        Column('origin'),              # Dist name of the bleeding version
+        Column('bleeding'),            # Most recent available version
+        Column('official'),            # Official version of backport.pkg in backport.dist
+        Column('target'),              # Version of the last scheduled backport
+        Column('archs'),               # Architectures where backport.target is BUILD_OK
+        Column('progress',type='int'), # Number backport.archs
+        Column('policy',type='int')],  # Schedule policy
 ]
-
-url = {'debian':'http://ftp.debian.org/debian'}
-#DistType.Released.Value,url['debian']
-#DistType.Bleeding.Value,url['debian']
-data = (('dist',
-         ('name','type','url','comp'),
-         (('etch',0,'main contrib non-free'),
-          ('sid' ,1,'main contrib non-free'))),
-        ('enum',
-         ('type', 'name', 'value'),
-         (('status', 'new', 1),('status', 'old', 0)))
-        )
 
 ##
 ## Database class
@@ -117,18 +96,22 @@ class Database(object):
         return cls._instance  
 
     def init(self):
-        self.path = os.path.join(BackporterConfig().get('config', 'database'),'backporter.db')
-        if not os.path.isfile(self.path): # Create new db
-            self.create()
+        self.path = RebuilddConfig().get('build', 'database_uri')[len('sqlite://'):]
+        if not os.path.isfile(self.path): # Create new db with rebuildd init
+            if os.system('/usr/sbin/rebuildd init') != 0:
+                Logger().fatal('Failed to run /usr/sbin/rebuildd init')
+        self.create()
 
     # Create all tables
     def create(self):
-        Logger().debug("Creating new db at %s" % self.path)
         cnx = self.get_cnx()
         cursor = cnx.cursor()
         for table in schema:
-            for stmt in self._to_sql(table):
-                cursor.execute(stmt)
+            cursor.execute('PRAGMA table_info (%s)' % table.name)
+            if not cursor.fetchone():
+                Logger().debug("Creating table %s at %s" % (table.name,self.path))
+                for stmt in self._to_sql(table):
+                    cursor.execute(stmt)
         cnx.commit()
 
     # Return a db connection
@@ -141,6 +124,13 @@ class Database(object):
         else:
             self.cnx[tname] = sqlite.connect(self.path, check_same_thread=False)
             return self.cnx[tname]
+
+    # Return the columns of a table
+    def get_col(self, name):
+        for table in schema:
+            if table.name == name:
+                return [column.name for column in table.columns]
+        raise BackporterError, 'No table table named %s' % name
 
     # Generate SQL CREATE statements
     def _to_sql(self,table):
