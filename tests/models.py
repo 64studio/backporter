@@ -2,99 +2,57 @@ import random
 import unittest
 import os
 
-from data import *
-from backporter.BackporterConfig      import BackporterConfig
+#from data import *
+from rebuildd.RebuilddConfig import RebuilddConfig
 from backporter.Models      import *
-from backporter.Backporter  import Backporter
+from backporter.Database    import Database
+from backporter.BackporterError import BackporterError
 
 #from backporter.Backporterd import Backporterd
 
-class TestSequenceFunctions(unittest.TestCase):
+class ModelsTestCase(unittest.TestCase):
     
     def test_models(self):
-        self._test_source()
-        self._test_dist()
-        self._test_backport()
-        self._test_package()
-        self._test_job()
+        cnx = Database().get_cnx()
+        cursor = cnx.cursor()
+        cursor.execute('DELETE FROM backport')
+        cnx.commit()
 
-    def _test_dist(self):
-        for dist in dists:
-            Backporter().dist_add(dist[0], dist[1], dist[2], dist[3])
-        etch  = dists[0]
-        gutsy = dists[3]
-        Backporter().dist_update(etch[0], etch[1], etch[2], 'main contrib')
-        Backporter().dist_remove(gutsy[0])
+        # New
+        self.b = Backport(newid=True)
+        self.assertEqual(self.b.id, 1)
 
-    def _test_backport(self):
+        def raiseme(pkg, dist):
+            Backport(pkg=pkg, dist=dist)
+        self.assertRaises(BackporterError, raiseme, 'libgig','etch')
 
-        for bkp in bkps:
-            Backporter().backport_add(bkp[0], bkp[1], bkp[2])
-        Backporter().backport_remove('qtractor')
-        Backporter().backport_remove('wine')
-        Backporter().backport_remove('jack')
+        # Insert
+        self.b.pkg  = 'libgig'
+        self.b.dist = 'etch'
+        self.b.insert()
+        self.b2 = Backport('libgig','etch')
+        self.assertEqual(self.b.id, self.b2.id)
 
-    def _test_source(self):
-        libgig  = bkps[0]
-        Backporter().source_update(libgig[0], libgig[1], '0.1.1')
+        # Update
+        self.b.origin = 'sid'
+        self.b.archs.append('i386')
+        self.b.update()
+        self.b2 = Backport('libgig','etch')
+        self.assertEqual(self.b2.origin, 'sid')
+        self.assertEqual(self.b2.archs, ['i386'])
 
+        # Select
+        self.assertEqual(len(Backport().select()), 1)
+        self.b = Backport()
+        self.b.pkg  = 'liblscp'
+        self.b.dist = 'etch'
+        self.b.insert()
+        self.assertEqual(len(Backport().select()), 2)
 
-    def _test_package(self):
-        p = Package()
-        for pkg in pkgs:
-            p.id       = pkg[0]
-            p.name     = pkg[1]
-            p.version  = pkg[2]
-            p.priority = pkg[3]
-            p.insert()
-        i = 1
-        for p in Package().select():
-            self.assertEqual(p.id, i)
-            i += 1
-        self.assertEqual(len(Package().select()), 2)
-        p = Package('libgig','0.1')
-        p.name = "foo"
-        p.update()
-        q = Package('foo','0.1')
-        self.assertEqual(p.name, "foo")
-        for p in Package().select():
-            p.delete()
-        self.assertEqual(len(Package().select()), 0)
-
-    def _test_job(self):
-        p = Package()
-        for pkg in pkgs:
-            p.id       = pkg[0]
-            p.name     = pkg[1]
-            p.version  = pkg[2]
-            p.priority = pkg[3]
-            p.insert()
-        j = Job()
-        for job in jobs:
-            j.id             = job[0]
-            j.status         = job[1]
-            j.mailto         = job[2]
-            j.package_id     = job[3]
-            j.dist           = job[4]
-            j.arch           = job[5]
-            j.creation_date  = job[6]
-            j.status_changed = job[7]
-            j.build_end      = job[8]
-            j.build_start    = job[9]
-            j.host           = job[10]
-            j.insert()
-        self.assertEqual(len(Job().select()), 2)
-        j = Job(2)
-        j.mailto = "foo"
-        j.update()
-        k = Job(2)
-        self.assertEqual(k.mailto, "foo")
-        self.assertEqual(len(Job().select(package_id=1)), 1)
-        self.assertEqual(len(Job.join('etch')), 2)
-        self.assertEqual(len(Job.join('etch','libgig')), 1)
-        for j in Job().select():
-            j.delete()
-        self.assertEqual(len(Job().select()), 0)
+        # Delete
+        for b in Backport().select():
+            b.delete()
+        self.assertEqual(len(Backport().select()), 0)
 
 if __name__ == '__main__':
     unittest.main()
