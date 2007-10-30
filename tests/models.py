@@ -19,9 +19,7 @@ class ModelsTestCase(unittest.TestCase):
         cnx.commit()
 
         # New
-        self.b = Backport(newid=True)
-        self.assertEqual(self.b.id, 1)
-
+        self.b = Backport()
         def raiseme(pkg, dist):
             Backport(pkg=pkg, dist=dist)
         self.assertRaises(BackporterError, raiseme, 'libgig','etch')
@@ -31,7 +29,8 @@ class ModelsTestCase(unittest.TestCase):
         self.b.dist = 'etch'
         self.b.insert()
         self.b2 = Backport('libgig','etch')
-        self.assertEqual(self.b.id, self.b2.id)
+        self.assertEqual(self.b.pkg, self.b2.pkg)
+        self.assertEqual(self.b.dist, self.b2.dist)
 
         # Update
         self.b.origin = 'sid'
