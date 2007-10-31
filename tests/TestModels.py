@@ -214,5 +214,5 @@ class TestBackport(unittest.TestCase):
              ('freecycle',  'etch' ,'i386')])
 
 if __name__ == '__main__':
-    Database(path='my.db')
+    Database(path=':memory:')
     unittest.main()
