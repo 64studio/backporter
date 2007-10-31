@@ -1,9 +1,29 @@
-#!/usr/bin/env python
+# backporter - Backport debian packages
+#
+# (c) 2007 - Free Ekanayaka <free@64studio.com>
+#
+#   This software is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; version 2 dated June, 1991.
+#
+#   This software is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this software; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+#
 
 import cmd
 import sys
-from backporter.Backporter import Backporter
-from backporter.Models     import BackportStatus, DistType
+from pysqlite2.dbapi2 import IntegrityError
+
+from backporter.Backporter        import Backporter
+from backporter.BackporterError   import BackporterError
+from backporter.Models            import *
+from rebuildd.RebuilddConfig      import RebuilddConfig
 
 class Shell(cmd.Cmd):
  
@@ -13,12 +33,13 @@ class Shell(cmd.Cmd):
         self.doc_header = 'Commands (type help <topic>):'
         self.undoc_header = ''
         self.ruler = ''
+        self.dists = RebuilddConfig().get('build','dists').split()
 
     def onecmd(self, line):
         if line == 'help':
             self.help_help(line)
             return
-        cmd.Cmd.onecmd(self, line)
+        return cmd.Cmd.onecmd(self, line)
 
     ##
     ## Available Commands
@@ -43,134 +64,96 @@ class Shell(cmd.Cmd):
                 continue
             print "   %s" % name[3:]
 
-    ## Dist
-    _help_dist_list   = ('dist list', 'Show dists')
-    _help_dist_chroot = ('dist chroot [<name>]', 'Creates build chroot')
-    _help_dist_add    = ('dist add <name> <type> <url> <comp>', 'Add dist')
-    _help_dist_remove = ('dist remove <name>', 'Remove dist')
-    _help_dist = [_help_dist_list,
-                  _help_dist_chroot,
-                  _help_dist_remove,
-                  _help_dist_add]
+    ## Add, set, remove backports
+    _help_list   = [('list', 'Show backports')]
+    _help_add    = [('add [-d <dist>]', 'Add a backport')]
+    _help_set    = [('set [-d <dist>] <pkg> policy Never|Once|Always|Smart', 'Set backport options ')]
 
-    def do_dist(self, line):
+    def _parse_cmd(self, line):
         arg = self._tokenize(line)
-        if len(arg) == 0:
-            return self.do_help('dist')
-        return getattr(self, "_do_dist_" + arg[0])(arg[1:])
-
-    def _do_dist_list(self, arg):
-
-        self._print_listing(['Name', 'Type', 'Url','Components'], Backporter().dist_list())
-
-    def _do_dist_add(self, arg):
-
-        if not len(arg) >= 4:
-            return self._print_help(self._help_dist_add)
-
-        Backporter().dist_add(arg[0], arg[1], arg[2], " ".join(arg[3:]))
-
-    def _do_dist_remove(self, arg):
-
-        if not len(arg) == 1:
-            return self._print_help(self._help_dist_add)
-
-        Backporter().dist_remove(arg[0])
-
-    ## Backports
-    _help_backport_list   = ('backport list', 'Show backports')
-    _help_backport_add    = ('backport add <package> [<mode>]', 'Add a backport')
-    _help_backport_set    = ('backport set <package> [arch <arch>|dist <dist>]', 'Set backport options ')
-    _help_backport_remove = ('backport remove <package>', 'Remove a backport')
-    _help_backport = [_help_backport_list,
-                  _help_backport_remove,
-                  _help_backport_add, _help_backport_set]
-
-    def do_backport(self, line):
-        arg = self._tokenize(line)
-        if len(arg) == 0:
-            return self.do_help('backport')
-        return getattr(self, "_do_backport_" + arg[0])(arg[1:])
-
-    def _do_backport_list(self, arg):
-
-        self._print_listing(['Package', 'Status', 'Options'], Backporter().backport_list())
-
-    def _do_backport_add(self, arg):
-
         if not len(arg) >= 1:
-            return self._print_help(self._help_backport_add)
-
-        package = arg[0]
-        if len(arg) >= 2:
-            status = BackportStatus[arg[1]].Value # FIX
+            self._exit_with_error('Wrong syntax')
+        if arg[0] == '-d':
+            if not len(arg) > 2:
+                self._exit_with_error('Wrong syntax')
+            dist = arg[1]
+            if not dist in self.dists:
+                self._exit_with_error('Unknown distribution "%s"' % dist)
+            pkg  = arg[2]
+            if len(arg) > 3:
+                rest = arg[3:]
+            else:
+                rest = []
         else:
-            status =  BackportStatus.AutoUpdate.Value
-        if len(arg) >= 3:
-            options = arg[2]
-        else:
-            options = None
+            dist = None
+            pkg = arg[0]
+            if len(arg) > 1:
+                rest = arg[1:]
+            else:
+                rest = []
+                
+        return (pkg, dist, rest)
 
-        Backporter().backport_add(package, status, options)
+    def do_add(self, line):
+        (pkg, dist, rest) = self._parse_cmd(line)
+        try:
+            Backporter().add(pkg,dist)
+        except IntegrityError, e:
+            self._exit_with_error('Field exists')
 
-    def _do_backport_set(self, arg):
+    def do_set(self, line):
+        (pkg, dist, rest) = self._parse_cmd(line)
+        if len(rest) != 2:
+            self._exit_with_error('Wrong syntax')
+        if rest[0] in ['policy']:
+            opt = rest[0]
+            val = getattr(getattr(BackportPolicy, rest[1]), 'Value')
+            Backporter().set(pkg, dist, opt, val)
+            return 1
+        self._exit_with_error('Unknown option')
+        
 
-        if not len(arg) in [3,5]:
-            return self._print_help(self._help_backport_set)
+    def do_list(self, arg):
+        fields = ['Package', 'Dist', 'Origin', 'Bleeding', 'Official', 'Target', 'Archs', 'Progress', 'Policy']
+        self._print_listing(fields, Backporter().list())
 
-        if not arg[1] in ['arch','dist']:
-            return self._print_help(self._help_backport_set)
-
-        pkg = arg[0]
-        key = arg[1]
-        val = arg[2]
-
-        options = {}
-        options[key] = val
-
-        if len(arg) > 3:
-            if arg[3] not in ['arch','dist']:
-                return self._print_help(self._help_backport_options)
-            key = arg[3]
-            val = arg[4]
-            options[key] = val
-
-        Backporter().backport_update(pkg, options=options)
-
-    def _do_backport_remove(self, arg):
-
-        if not len(arg) == 1:
-            return self._print_help(self._help_backport_add)
-
-        Backporter().backport_remove(arg[0])
-
-    ## Jobs
-    _help_job_list   = ('job list <dist>', 'Show jobs for <dist>')
-    _help_job = [_help_job_list]
-
-    def do_job(self, line):
-        arg = self._tokenize(line)
-        if len(arg) == 0:
-            return self.do_help('job')
-        return getattr(self, "_do_job_" + arg[0])(arg[1:])
-
-    def _do_job_list(self, arg):
-
-        if len(arg) != 1:
-            return self._print_help(self._help_job_list)            
-        self._print_listing(['Job', 'Package', 'Version', 'Arch', 'Status'], Backporter().job_list(arg[0]))
+    def do_remove(self, line):
+        (pkg, dist, rest) = self._parse_cmd(line)
+        try:
+            Backporter().remove(pkg,dist)
+        except BackporterError, e:
+            self._exit_with_error(e.message)
 
     ## Download and repack source
-    _help_repack = [('repack <name> <dist>', 'Download and repack a source package')]
+    _help_source = ('source -d <dist> <pkg>=<ver> [-- <apt-get options>]', 'Download and repack a source package')
 
-    def do_repack(self, line):
+    def do_source(self, line):
         arg = self._tokenize(line)
-        if not len(arg) >= 2:
-            return self._print_help(self._help_repack)
-        Backporter().repack(arg[1], arg[0])
+        if not len(arg) >= 3:
+            self._exit_with_error('Wrong syntax')
+        if not arg[0] == '-d':
+            self._exit_with_error('Wrong syntax')
+        if not arg[1] in self.dists:
+            self._exit_with_error('Unknown distribution "%s"' % arg[1])
+        if not len(arg[2].split('=')) == 2:
+            self._exit_with_error('Wrong package or version "%s"' % arg[2])
+        if len(arg) >= 4 and not arg[3] == '--':
+            self._exit_with_error('Wrong syntax')
 
-    ## Update apt lists
-    _help_update = [('update', 'Update APT lists')]
+        dist = arg[1]
+        pkg  = arg[2].split('=')[0]
+        ver  = arg[2].split('=')[1]
+        if ver.endswith('~%s1' % dist):
+            ver = ver[:-len('~%s1' % dist)]
+        if len(arg) >= 5:
+            opts = " ".join(arg[4:])
+        else:
+            opts = None
+
+        return Backporter().source(dist, pkg, ver, opts)
+
+    ## Update versions
+    _help_update = [('update', 'Update versions from APT')]
 
     def do_update(self, line):
         Backporter().update()
@@ -197,6 +180,10 @@ class Shell(cmd.Cmd):
 
     def _print_help(self, help):
         print '%s - %s' % (help[0], help[1])
+
+    def _exit_with_error(self, error):
+        print 'E: %s' % error
+        sys.exit(1)
 
     def _print_listing(self, headers, data, sep=' ', decor=True):
         cons_charset = sys.stdout.encoding

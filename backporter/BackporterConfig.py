@@ -1,6 +1,6 @@
-# rebuildd - Debian packages rebuild tool
+# backporter - Backport debian packages
 #
-# (c) 2007 - Julien Danjou <acid@debian.org>
+# (c) 2007 - Free Ekanayaka <free@64studio.com>
 #
 #   This software is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -19,12 +19,13 @@
 import ConfigParser
 import os
 
-__all__ = ['Config']
+__all__ = ['BackporterConfig']
 
 class BackporterConfig(object, ConfigParser.ConfigParser):
     """Main configuration singleton"""
 
     config_file = "/etc/backporter/backporter.conf"
+    rebuildd_config_file = "/etc/rebuildd/rebuilddrc"
     _instance = None
 
     def __new__(cls, *args, **kwargs):
@@ -37,14 +38,11 @@ class BackporterConfig(object, ConfigParser.ConfigParser):
         ConfigParser.ConfigParser.__init__(self)
 
         # add default sections
-        self.add_section('config')
+        self.add_section('bleeding')
         self.add_section('http')
 
         # add default values
-        self.set('config', 'database',  '/var/lib/backporter')
-        self.set('config', 'workspace', '/var/cache/backporter')
-        self.set('config', 'log',       '/var/log/backporter')
-        self.set('config', 'archs',     'i386 amd64')
+        self.set('bleeding', 'dists',     'sid local')
 
         self.set('http', 'ip',     '0.0.0.0')
         self.set('http', 'port',     '8080')

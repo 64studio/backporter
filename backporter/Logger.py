@@ -4,6 +4,8 @@
 # All rights reserved.
 #
 
+import sys
+
 class Logger(object):
 
     _instance = None 
@@ -19,5 +21,10 @@ class Logger(object):
 
     def debug(self,text):
         print 'D: %s' % text
+
+    def fatal(self,text):
+        print 'E: %s' % text
+        sys.exit(1)
+
     def info(self,text):
         print 'I: %s' % text

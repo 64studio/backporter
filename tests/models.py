@@ -1,6 +1,7 @@
 import random
 import unittest
 import os
+from pysqlite2.dbapi2 import IntegrityError
 
 #from data import *
 from rebuildd.RebuilddConfig import RebuilddConfig
@@ -19,34 +20,41 @@ class ModelsTestCase(unittest.TestCase):
         cnx.commit()
 
         # New
-        self.b = Backport()
+        b = Backport()
         def raiseme(pkg, dist):
             Backport(pkg=pkg, dist=dist)
         self.assertRaises(BackporterError, raiseme, 'libgig','etch')
 
         # Insert
-        self.b.pkg  = 'libgig'
-        self.b.dist = 'etch'
-        self.b.insert()
-        self.b2 = Backport('libgig','etch')
-        self.assertEqual(self.b.pkg, self.b2.pkg)
-        self.assertEqual(self.b.dist, self.b2.dist)
+        b.pkg  = 'libgig'
+        b.dist = 'etch'
+        b.insert()
+        b2 = Backport('libgig','etch')
+        self.assertEqual(b.pkg, b2.pkg)
+        self.assertEqual(b.dist, b2.dist)
+        self.assertRaises(IntegrityError,b2.insert)
 
         # Update
-        self.b.origin = 'sid'
-        self.b.archs.append('i386')
-        self.b.update()
-        self.b2 = Backport('libgig','etch')
-        self.assertEqual(self.b2.origin, 'sid')
-        self.assertEqual(self.b2.archs, ['i386'])
+        b.origin = 'sid'
+        b.archs.append('i386')
+        b.progress = -1
+        b.update()
+        b2 = Backport('libgig','etch')
+        self.assertEqual(b2.origin, 'sid')
+        self.assertEqual(b2.progress, -1)
+        self.assertEqual(b2.archs, ['i386'])
 
         # Select
         self.assertEqual(len(Backport().select()), 1)
-        self.b = Backport()
-        self.b.pkg  = 'liblscp'
-        self.b.dist = 'etch'
-        self.b.insert()
+        b = Backport()
+        b.pkg  = 'liblscp'
+        b.dist = 'etch'
+        archs = RebuilddConfig().get('build', 'archs').split()
+        b.progress = len(archs) - 1
+        b.insert()
         self.assertEqual(len(Backport().select()), 2)
+        self.assertEqual(len(Backport().select(progress='partial')), 1)
+        self.assertEqual(len(Backport().select(progress='null')), 1)
 
         # Delete
         for b in Backport().select():

@@ -18,9 +18,9 @@
 
 import os
 import threading
-
 from pysqlite2 import dbapi2 as sqlite
 from rebuildd.RebuilddConfig import RebuilddConfig
+
 from backporter.Logger import Logger
 
 __all__ = ['Database']
@@ -69,8 +69,7 @@ class Index(object):
 
 schema = [
     # Common
-    Table('backport', key=('id'))[
-        Column('id', type='integer'),  # Primary key
+    Table('backport', key=('pkg','dist'))[
         Column('pkg'),                 # Package name
         Column('dist'),                # Dist name
         Column('origin'),              # Dist name of the bleeding version
