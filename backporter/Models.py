@@ -55,14 +55,14 @@ class Backport(object):
     def delete(self):
         assert self.pkg and self.dist, 'Cannot deleting non-existent backport'
         cursor = self.cnx.cursor()
-        Logger().debug("Deleting backport '%s/%s'" % (self.pkg,self.dist))
+        Logger().debug('Deleting backport %s' % ", ".join([str(getattr(self,c)) for c in self.cols]))
         cursor.execute("DELETE FROM backport WHERE pkg='%s' and dist='%s'" % (self.pkg, self.dist))
         self.cnx.commit()
 
     def insert(self):
         assert self.pkg and self.dist, 'Cannot create backport with no pkg or no dist'
         cursor = self.cnx.cursor()
-        Logger().debug("Creating new backport %s/%s" % (self.pkg, self.dist))
+        Logger().debug('Creating backport %s' % ", ".join([str(getattr(self,c)) for c in self.cols]))
         cursor.execute('INSERT INTO backport (%s) VALUES ("%s", "%s", "%s", "%s", "%s", "%s", "%s", %d, %d)' % (
                 ",".join(self.cols), self.pkg, self.dist, self.origin, self.bleeding, self.official,
                 self.target, str(self.archs), self.progress, self.policy))
@@ -71,7 +71,7 @@ class Backport(object):
     def update(self):
         assert self.pkg and self.dist, 'Cannot update backport with no pkg or no dist'
         cursor = self.cnx.cursor()
-        Logger().debug('Updating backport "%s %s"' % (self.pkg,self.dist))
+        Logger().debug('Updating backport %s' % ", ".join([str(getattr(self,c)) for c in self.cols]))
         cursor.execute(
             'UPDATE backport SET origin="%s", bleeding="%s", official="%s", target="%s", archs="%s", progress=%d, policy=%d WHERE pkg="%s" and dist="%s"' % (
                 self.origin,
@@ -168,12 +168,15 @@ class Package(object):
 
     def __init__(self, name=None, version=None, id=None):
         self.cnx = Database().get_cnx()
+        self.cols = Database().get_col('package')
+        if name and not version or not name and version:
+                raise BackporterError, 'Package selection by only name or version not valid'
         if name != None and version != None:
             cursor = self.cnx.cursor()
             cursor.execute("SELECT id, priority FROM package WHERE name='%s' and version='%s'" % (name, version))
             row = cursor.fetchone()
             if not row:
-                raise Exception, 'Package %s does not exist.' % name
+                raise BackporterError, 'Package %s does not exist.' % name
             self.id       = row[0]
             self.name     = name
             self.version  = version
@@ -183,7 +186,7 @@ class Package(object):
             cursor.execute("SELECT name, version, priority FROM package WHERE id=%d" % id)
             row = cursor.fetchone()
             if not row:
-                raise Exception, 'Package %s does not exist.' % name
+                raise BackporterError, 'Package %s does not exist.' % name
             self.name     = row[0]
             self.version  = row[1]
             self.priority = row[2]
@@ -196,23 +199,15 @@ class Package(object):
     def delete(self):
         assert self.id, 'Cannot deleting non-existent package'
         cursor = self.cnx.cursor()
-        Logger().debug("Deleting package %d" % self.id)
+        Logger().debug('Delating package %s' % ", ".join([str(getattr(self,c)) for c in self.cols]))
         cursor.execute("DELETE FROM package WHERE id=%d" % self.id)
         self.cnx.commit()
 
     def insert(self):
         assert self.name and self.version, 'Cannot create package with no nameand version'
         cursor = self.cnx.cursor()
-        Logger().debug("Creating new package %s %s" % (self.name, self.version))
+        Logger().debug('Creating package %s' % ", ".join([str(getattr(self,c)) for c in self.cols]))
         cursor.execute("INSERT INTO package (name, version, priority) VALUES ('%s','%s', '%s')" % (self.name, self.version, self.priority))
-        self.cnx.commit()
-
-    def update(self):
-        assert self.id, 'Cannot update non-existent package'
-        cursor = self.cnx.cursor()
-        Logger().debug('Updating package %d' % self.id)
-        cursor.execute("UPDATE package SET name='%s', version='%s', priority='%s' WHERE id=%d" % \
-                           (self.name, self.version, self.priority, self.id))
         self.cnx.commit()
 
     def select(cls, name=None):
@@ -238,13 +233,14 @@ class Package(object):
 class Job(object):
 
     def __init__(self, id=None):
+        self.cols = Database().get_col('job')
         self.cnx = Database().get_cnx()
         if id:
             cursor = self.cnx.cursor()
             cursor.execute("SELECT status, mailto, package_id, dist, arch, creation_date, status_changed, build_start, build_end, host FROM job WHERE id=%d" % (id))
             row = cursor.fetchone()
             if not row:
-                raise Exception, 'Job %d does not exist.' % id
+                raise BackporterError, 'Job %d does not exist.' % id
             self.id             = id
             self.status         = row[0]
             self.mailto         = row[1]
@@ -257,6 +253,7 @@ class Job(object):
             self.build_end      = row[8]
             self.host           = row[9]
         else:
+            self.id             = None
             self.status         = None
             self.mailto         = None
             self.package_id     = None
@@ -271,7 +268,7 @@ class Job(object):
     def delete(self):
         assert self.id, 'Cannot deleting non-existent job'
         cursor = self.cnx.cursor()
-        Logger().debug("Deleting job %d" % self.id)
+        Logger().debug('Deleting job %s' % ", ".join([str(getattr(self,c)) for c in self.cols]))
         cursor.execute("DELETE FROM job WHERE id=%d" % self.id)
         self.cnx.commit()
 
@@ -280,7 +277,7 @@ class Job(object):
         assert self.dist,       'Cannot create job with no dist'
         assert self.arch,       'Cannot create job with no arch'
         cursor = self.cnx.cursor()
-        Logger().debug("Creating new job %d" % self.package_id)
+        Logger().debug('Creating job %s' % ", ".join([str(getattr(self,c)) for c in self.cols]))
         cursor.execute("INSERT INTO job (status, package_id, dist, arch, creation_date) VALUES (%d, %d, '%s', '%s', '%s')" % (
                 100, # Alwasy jobs in WAIT status
                 self.package_id,
@@ -292,7 +289,7 @@ class Job(object):
     def update(self):
         assert self.id, 'Cannot update non-existent job'
         cursor = self.cnx.cursor()
-        Logger().debug('Updating job %d' % self.package_id)
+        Logger().debug('Updating job %s' % ", ".join([str(getattr(self,c)) for c in self.cols]))
         cursor.execute("UPDATE job SET status=%d, mailto='%s', package_id=%d, dist='%s', arch='%s', creation_date='%s', status_changed='%s', build_start='%s', build_end='%s', host='%s' WHERE id=%d" % (
                 self.status,
                 self.mailto,

@@ -12,6 +12,8 @@ from backporter.BackporterError import BackporterError
 #from backporter.Backporterd import Backporterd
 
 class ModelsTestCase(unittest.TestCase):
+
+    def setUp(self):
     
     def test_models(self):
         cnx = Database().get_cnx()

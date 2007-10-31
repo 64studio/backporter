@@ -67,7 +67,7 @@ class Index(object):
 ## Database schema
 ##
 
-schema = [
+backporter_schema = [
     # Common
     Table('backport', key=('pkg','dist'))[
         Column('pkg'),                 # Package name
@@ -79,6 +79,26 @@ schema = [
         Column('archs'),               # Architectures where backport.target is BUILD_OK
         Column('progress',type='int'), # Number backport.archs
         Column('policy',type='int')],  # Schedule policy
+]
+
+rebuildd_schema = [
+    Table('job', key=('id'))[
+        Column('id',type='integer'),
+        Column('status',type='int'),
+        Column('mailto'),
+        Column('package_id', type='int CONSTRAINT package_id_exists REFERENCES package(id) ON DELETE CASCADE'),
+        Column('dist'),
+        Column('arch'),
+        Column('creation_date', type='timestamp'),
+        Column('status_changed', type='timestamp'),
+        Column('build_start', type='timestamp'),
+        Column('build_end', type='timestamp'),
+        Column('host')],
+    Table('package', key=('id'))[
+        Column('id', type='integer'),
+        Column('name'),
+        Column('version'),
+        Column('priority')],
 ]
 
 ##
@@ -94,15 +114,17 @@ class Database(object):
            cls._instance.init(*args, **kwargs)
         return cls._instance  
 
-    def init(self):
-        self.path = RebuilddConfig().get('build', 'database_uri')[len('sqlite://'):]
-        if not os.path.isfile(self.path): # Create new db with rebuildd init
-            if os.system('/usr/sbin/rebuildd init') != 0:
-                Logger().fatal('Failed to run /usr/sbin/rebuildd init')
-        self.create()
+    def init(self, path=None):
+        if path:
+            self.path = path
+        else:
+            self.path = RebuilddConfig().get('build', 'database_uri')[len('sqlite://'):]
 
-    # Create all tables
-    def create(self):
+        self.create(rebuildd_schema)
+        self.create(backporter_schema)
+
+    # Create all tables in schema
+    def create(self, schema):
         cnx = self.get_cnx()
         cursor = cnx.cursor()
         for table in schema:
@@ -126,7 +148,7 @@ class Database(object):
 
     # Return the columns of a table
     def get_col(self, name):
-        for table in schema:
+        for table in backporter_schema + rebuildd_schema:
             if table.name == name:
                 return [column.name for column in table.columns]
         raise BackporterError, 'No table table named %s' % name
