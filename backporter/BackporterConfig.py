@@ -25,7 +25,7 @@ class BackporterConfig(object, ConfigParser.ConfigParser):
     """Main configuration singleton"""
 
     config_file = "/etc/backporter/backporter.conf"
-    rebuildd_config_file = "/etc/rebuildd/rebuilddrc"
+
     _instance = None
 
     def __new__(cls, *args, **kwargs):
@@ -39,14 +39,9 @@ class BackporterConfig(object, ConfigParser.ConfigParser):
 
         # add default sections
         self.add_section('bleeding')
-        self.add_section('http')
 
         # add default values
         self.set('bleeding', 'dists',     'sid local')
-
-        self.set('http', 'ip',     '0.0.0.0')
-        self.set('http', 'port',     '8080')
-        self.set('http', 'templates', '/usr/share/backporter/templates')
 
         if not dontparse:
             self.reload()

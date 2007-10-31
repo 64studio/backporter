@@ -11,7 +11,6 @@ import os
 from pysqlite2                  import dbapi2 as sqlite
 from rebuildd.RebuilddConfig    import RebuilddConfig
 from rebuildd.JobStatus         import JobStatus
-from BackporterTestSetup import backporter_global_test_setup
 from backporter.Models          import *
 from backporter.Database        import Database
 from backporter.BackporterError import BackporterError
@@ -19,7 +18,7 @@ from backporter.BackporterError import BackporterError
 class TestPackage(unittest.TestCase):
 
     def setUp(self):
-        backporter_global_test_setup()
+	Database().clean()
         self.p = Package()
         self.p.name  = 'libgig'
         self.p.version = '0.1-1'
@@ -52,7 +51,7 @@ class TestPackage(unittest.TestCase):
 class TestJob(unittest.TestCase):
 
     def setUp(self):
-        backporter_global_test_setup()
+	Database().clean()
         self.j = Job()
         self.j.package_id  = 1
         self.j.arch  = 'amd64'
@@ -74,8 +73,24 @@ class TestJob(unittest.TestCase):
         self.assertEqual(self.j.arch, j.arch)
 
     def test_select(self):
-        self.j.insert()
-        self.assertEqual(len(Job().select()), 1)
+
+        packages = ((1, 'alsa-driver',   '1.0.14-2'),
+                    (2, 'ams',           '1.8.8-2'),
+                    (3, 'freecycle',     '0.6alpha-2'))
+
+
+        for package in packages:
+            p = Package()
+            (p.id, p.name, p.version) = package
+            p.insert()
+            j = Job()
+            (j.package_id, j.dist, j.arch) = (p.id, 'etch', 'amd64')
+            j.insert()
+            (j.package_id, j.dist, j.arch) = (p.id, 'etch', 'i386')
+            j.insert()
+
+        self.assertEqual(len(Job().select()), 6)
+        self.assertEqual(len(Job().select(package_id=1,dist='etch',arch='i386')), 1)
 
     def test_delete(self):
         self.j.insert()
@@ -86,7 +101,7 @@ class TestJob(unittest.TestCase):
 class TestBackport(unittest.TestCase):
 
     def setUp(self):
-        backporter_global_test_setup()
+	Database().clean()
         self.b = Backport()
         self.b.pkg  = 'libgig'
         self.b.dist = 'etch'

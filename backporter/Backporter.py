@@ -60,6 +60,13 @@ class Backporter(object):
                          b.archs, str(b.progress), BackportPolicy[b.policy]))
         return data
 
+    def jobs(self):
+        data = []
+        for b in Backport.jobs():
+            data.append((b.pkg, b.dist, b.target, b.archs, str(b.progress), BackportPolicy[b.policy],
+                         b.job.id, b.job.arch, b.job.status))
+        return data
+
     def add(self, pkg, dist):
        b = Backport()
        if dist:
@@ -76,7 +83,7 @@ class Backporter(object):
            b.insert()
 
     def set(self, pkg, dist, opt, val):
-       b = Backport()
+       b = Backport(pkg, dist)
        if dist:
            dists = [dist]
        else:
@@ -180,10 +187,11 @@ class Backporter(object):
         # Process BUILD_OK backports first
         p = Backport()
         p.pkg      = None
-        for b in Backport.join(progress='partial', status=JobStatus.BUILD_OK, orderBy='backport.pkg'):
+        p.dist     = None
+        for b in Backport.jobs(progress='partial', status=JobStatus.BUILD_OK, orderBy='backport.pkg,backport.dist'):
 
             # Check if we are starting a new pkg group
-            if b.pkg != p.pkg:
+            if b.pkg != p.pkg or b.dist != p.dist:
                 p.pkg       = b.pkg
                 p.dist      = b.dist
                 p.origin    = b.origin
@@ -194,10 +202,10 @@ class Backporter(object):
                 p.policy    = b.policy
                 p.progress  = b.progress
 
-            # There should be only one successful build for every backport/arch
-            if b.job.arch in b.archs:
-                BackportLogger.warn("Ignoring successful build %s %s %s" % (b.pkg, b.dist, b.job.arch))
+            # We have probably already considered this job
+            if b.job.arch in p.archs:
                 continue
+
             p.archs.append(b.job.arch)
             p.progress += 1
             p.update()
@@ -208,7 +216,7 @@ class Backporter(object):
         p.pkg      = None
         p.target   = '0'
         p.arch     = None
-        for b in Backport.join(progress='partial', status=JobStatus.DEPWAIT, orderBy='backport.pkg, backport.target, job.arch'):
+        for b in Backport.jobs(progress='partial', status=JobStatus.DEPWAIT, orderBy='backport.pkg, backport.target, job.arch, job.id'):
 
             # Skip oldor schedules for the same backport
             if p.pkg == b.pkg and p.target == b.target and p.arch == b.arch:

@@ -14,13 +14,14 @@ class Logger(object):
         if cls._instance is None:  
            cls._instance = object.__new__(cls)  
            cls._instance.init(*args, **kwargs)
-        return cls._instance  
+        return cls._instance
 
     def init(self):
         return
 
     def debug(self,text):
-        print 'D: %s' % text
+        if False:
+            print 'D: %s' % text
 
     def fatal(self,text):
         print 'E: %s' % text
@@ -28,3 +29,6 @@ class Logger(object):
 
     def info(self,text):
         print 'I: %s' % text
+
+    def warn(self,text):
+        print 'W: %s' % text
