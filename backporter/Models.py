@@ -116,23 +116,23 @@ class Backport(object):
         return backports
     select = classmethod(select)
 
-    def join(cls, progress=None, status=None, orderBy=None):
+    def jobs(cls, progress=None, status=None, orderBy=None):
 
         cols  = Database().get_col('backport')
         archs = RebuilddConfig().get('build', 'archs').split()
         select = "SELECT %s, job.id, job.status, job.arch FROM backport" % ", ".join(['backport.%s' % c for c in cols])
         join_pkg = " INNER JOIN package ON package.name=backport.pkg and package.version=backport.target and package.id=job.package_id"
         join_job = " INNER JOIN job ON job.dist=backport.dist"
+        if status:
+           join_job += " and job.status=%s" % status
         stmt = select + join_pkg + join_job
 
         if progress == 'complete':
-            stmt += " WHERE progress = %d" % len(archs)
+            stmt += " WHERE backport.progress = %d" % len(archs)
         if progress == 'partial':
-            stmt += " WHERE progress >= 0 and progress < %d" % len(archs)
+            stmt += " WHERE backport.progress >= 0 and backport.progress < %d" % len(archs)
         if progress == 'null':
-            stmt += " WHERE progress < 0"
-        if status:
-            stmt += " and job.status=%s" % status
+            stmt += " WHERE backport.progress < 0"
         if orderBy:
             stmt += " ORDER BY %s" % orderBy
 
@@ -159,7 +159,7 @@ class Backport(object):
             b.job    = j
             backports.append(b)
         return backports
-    join = classmethod(join)
+    jobs = classmethod(jobs)
 
 #
 # Package
@@ -278,8 +278,8 @@ class Job(object):
         assert self.arch,       'Cannot create job with no arch'
         cursor = self.cnx.cursor()
         Logger().debug('Creating job %s' % ", ".join([str(getattr(self,c)) for c in self.cols]))
-        cursor.execute("INSERT INTO job (status, package_id, dist, arch, creation_date) VALUES (%d, %d, '%s', '%s', '%s')" % (
-                100, # Alwasy jobs in WAIT status
+        cursor.execute("INSERT INTO job (status, package_id, dist, arch, creation_date) VALUES (?, ?, ?, ?, ?)", (
+                self.status,
                 self.package_id,
                 self.dist,
                 self.arch,
@@ -367,3 +367,49 @@ class Job(object):
                                            date,
                                            self.id)
         return build_log_file
+
+    def join(cls, progress=None, status=None, orderBy=None):
+
+        cols  = Database().get_col('backport')
+        archs = RebuilddConfig().get('build', 'archs').split()
+        select = "SELECT %s, job.id, job.status, job.arch FROM job" % ", ".join(['backport.%s' % c for c in cols])
+        join_pkg = " INNER JOIN package ON package.name=backport.pkg and package.version=backport.target and package.id=job.package_id"
+        join_bkp = " INNER JOIN backport ON backport.dist=job.dist"
+        if progress == 'complete':
+            join_bkp += " and backport.progress = %d" % len(archs)
+        if progress == 'partial':
+            join_bkp += " and backport.progress >= 0 and backport.progress < %d" % len(archs)
+        if progress == 'null':
+            join_bkp += " and backport.progress < 0"
+
+        stmt = select + join_pkg + join_bkp
+
+        if status:
+            stmt += " WHERE job.status=%s" % status
+        if orderBy:
+            stmt += " ORDER BY %s" % orderBy
+
+        cursor = Database().get_cnx().cursor()
+        cursor.execute(stmt)
+
+        jobs = []
+        
+        for (pkg, dist, origin, bleeding, official, target, archs, progress, policy, job_id, job_status, job_arch) in cursor:
+            j = cls()
+            j.id     = job_id
+            j.status = job_status
+            j.arch   = job_arch
+            b = Backport()
+            b.pkg      = pkg
+            b.dist     = dist
+            b.origin   = origin
+            b.bleeding = bleeding 
+            b.official = official
+            b.target   = target
+            b.archs    = eval(archs)
+            b.progress = progress
+            b.policy   = policy
+            j.backport = b
+            jobs.append(j)
+        return jobs
+    join = classmethod(join)

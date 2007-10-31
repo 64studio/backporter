@@ -135,6 +135,17 @@ class Database(object):
                     cursor.execute(stmt)
         cnx.commit()
 
+    # Create all tables in schema
+    def clean(self):
+        cnx = self.get_cnx()
+        cursor = cnx.cursor()
+        for table in backporter_schema + rebuildd_schema:
+            cursor.execute('PRAGMA table_info (%s)' % table.name)
+            if cursor.fetchone():
+                Logger().debug("Cleaning table %s at %s" % (table.name,self.path))
+                cursor.execute('DELETE FROM %s' % table.name)
+        cnx.commit()
+
     # Return a db connection
     def get_cnx(self):
         if not hasattr(self, 'cnx'):
