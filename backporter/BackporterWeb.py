@@ -22,23 +22,21 @@ import web
 import socket
 import os
 
-from backporter.Backporter          import Backporter
-from backporter.BackporterScheduler import BackporterScheduler
-from backporter.BackporterConfig    import BackporterConfig
-from backporter.Models              import *
-from backporter.Enum                import Enum
-
 from rebuildd.JobStatus          import JobStatus
+from backporter.Backporter       import Backporter
+from backporter.Models           import BackportPolicy
+from backporter.BackporterConfig import BackporterConfig
+from backporter.Enum             import Enum
 
 render = web.template.render(BackporterConfig().get('http', 'templates'),cache=False)
+dists = Backporter().rdists
+archs = Backporter().archs
 
 Color = Enum('Bleeding','Official','Newer','Backport','OutOfDate')
 
 class RequestIndex:
 
     def GET(self):
-
-        dists = Dist.select(DistType.Released.Value)
 
         print render.base(page=render.index(), \
                 hostname=socket.gethostname(), \
@@ -61,62 +59,17 @@ def status_to_html(text):
 
 class RequestDist:
 
-    def GET(self, dist, filter=None):
+    def GET(self, dist, policy=None):
 
-        dists = Dist.select(DistType.Released.Value)
-        archs = BackporterConfig().get('config', 'archs').split()
+        backports = Backporter().status(dist=dist)
 
-        if not filter:
-            status = BackportStatus.AutoUpdate.Value
-        if filter == 'all':
-            status = None
+        # Render integer values properly
+        for b in backports:
+            b.policy = BackportPolicy[b.policy]
+            for arch in archs:
+                b.status[arch] = status_to_html(JobStatus.whatis(b.status[arch]))
 
-        tds = []
-        # Iter over all backports
-        for b in Backport.select(status=status):
-
-            s = Source(b.package, dist)          # Official version
-            t = Source(b.package, b.bleeding())  # Bleeding edge
-
-            td = {}
-            td['Package']  = (b.package, 'white')
-            td['From']     = (b.bleeding(), b.bleeding())
-            td['Bleeding'] = (Color.Bleeding, version_to_html(t.version))
-            if Source.compare(t,s) == 0:
-                td['Official'] = (Color.Bleeding, version_to_html(s.version))
-            if Source.compare(t,s) >= 1:
-                td['Official'] = (Color.Official, version_to_html(s.version))
-            if Source.compare(t,s) <= -1:
-                td['Official'] = (Color.Newer, version_to_html(s.version))
-
-            b.version = None
-            for j in Job.join(dist, b.package):
-                if b.version == None:      # This must be the last scheduled job..
-                    b.version = j.version
-                    b.stamp   = j.creation_date
-                if b.version != j.version: # Old job
-                    break
-                if not td.has_key(j.arch):
-                    td[j.arch] = (j.id,status_to_html(JobStatus.whatis(j.status)))
-
-            for a in archs:
-                if not td.has_key(a):
-                    td[a] = (0," ")
-
-            if b.version == '%s~%s1' % (t.version, dist):
-                td['Backport'] = (Color.Backport,  version_to_html(b.version))
-            elif b.version == '%s~bpo.1' % t.version: # Support for old backports
-                td['Backport'] = (Color.Backport,  version_to_html(b.version))
-            elif b.version == '0' or b.version == None:
-                td['Backport'] = (Color.Official,  version_to_html(b.version))
-            else:
-                td['Backport'] = (Color.OutOfDate, version_to_html(b.version))
-            td['Mode'] = BackportStatus[b.status]
-            td['Last schedule'] = b.stamp
-
-            tds.append(td)
-
-        print render.base(page=render.dist(tds=tds, dist=dist, archs=archs, filter=filter), \
+        print render.base(page=render.dist(backports=backports, dist=dist, archs=archs, policy=policy), \
                 hostname=socket.gethostname(), dists=dists)
 
 class RequestJob:

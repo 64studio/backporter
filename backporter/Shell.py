@@ -65,7 +65,8 @@ class Shell(cmd.Cmd):
             print "   %s" % name[3:]
 
     ## Add, set, remove backports
-    _help_list   = [('list', 'Show backports')]
+    _help_list   = [('list [-d <dist>]', 'Show backports')]
+    _help_status = [('status [-d <dist>]', 'Show jobs')]
     _help_add    = [('add [-d <dist>]', 'Add a backport')]
     _help_set    = [('set [-d <dist>] <pkg> policy Never|Once|Always|Smart', 'Set backport options ')]
 
@@ -116,6 +117,15 @@ class Shell(cmd.Cmd):
     def do_list(self, arg):
         fields = ['Package', 'Dist', 'Origin', 'Bleeding', 'Official', 'Target', 'Archs', 'Progress', 'Policy']
         self._print_listing(fields, Backporter().list())
+
+    def do_status(self, arg):
+        cols = ['Package', 'Dist', 'Origin', 'Bleeding', 'Official', 'Target', 'Archs', 'Progress', 'Policy']
+        cols += Backporter().archs
+        rows = []
+        for b in Backporter().status():
+            rows.append((b.pkg, b.dist, b.origin, b.bleeding, b.official, b.target, b.archs, str(b.progress), BackportPolicy[b.policy]) + tuple(b.status.values()))
+
+        self._print_listing(cols, rows)
 
     def do_remove(self, line):
         (pkg, dist, rest) = self._parse_cmd(line)

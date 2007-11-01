@@ -60,12 +60,45 @@ class Backporter(object):
                          b.archs, str(b.progress), BackportPolicy[b.policy]))
         return data
 
-    def jobs(self):
-        data = []
-        for b in Backport.jobs():
-            data.append((b.pkg, b.dist, b.target, b.archs, str(b.progress), BackportPolicy[b.policy],
-                         b.job.id, b.job.arch, b.job.status))
-        return data
+    def status(self, dist=None):
+        backports = []
+        
+        d = Backport()
+        d.pkg  = None
+        d.dist = 'DUMMY'
+        p = Backport()
+        p.pkg      = None
+        p.dist     = None
+        p.status = {}
+
+        for b in [d] + Backport.jobs(dist=dist, orderBy='backport.pkg,backport.dist,job.id DESC') + [d]:
+
+            # We are starting a new backport group
+            if b.pkg != p.pkg or b.dist != p.dist:
+
+                # This is not a dummy element, update the data
+                if p.pkg:
+                    backports.append(p)
+
+                p = Backport()
+                p.pkg       = b.pkg
+                p.dist      = b.dist
+                p.origin    = b.origin
+                p.bleeding  = b.bleeding
+                p.official  = b.official
+                p.target    = b.target
+                p.archs     = b.archs
+                p.policy    = b.policy
+                p.progress  = b.progress
+                p.status    = {}
+                for arch in self.archs:
+                    p.status[arch] = JobStatus.UNKNOWN
+
+            # This is not a dummy element, update the status
+            if p.pkg and p.status[b.job.arch] == JobStatus.UNKNOWN:
+                p.status[b.job.arch] = b.job.status
+
+        return backports
 
     def add(self, pkg, dist):
        b = Backport()

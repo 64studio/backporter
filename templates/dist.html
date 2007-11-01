@@ -1,35 +1,32 @@
-$def with (tds, dist, archs, filter)
-$if filter != "all":
+$def with (backports, dist, archs, policy)
+$if policy != "all":
     <a href="/dist/$dist/all">[ Show all ]</a>
-$if filter == "all":
+$if policy == "all":
     <a href="/dist/$dist">[ Show active ]</a>
 
 <table>
   <thead>
     <tr>
       <th>Package</th>
-      <th>From</th>
+      <th>Origin</th>
       <th>Bleeding</th>
       <th>Official</th>
-      <th>Backport</th>
+      <th>Target</th>
       $for a in archs:
           <th>$a</th>
-      <th>Mode</th>
-      <th>Last schedule</th>
-    </tr>
+      <th>Policy</th>
   </thead>
   <tbody>
-$for td in tds:
+$for b in backports:
     <tr>
-    <td id="package"><a href="/package/$td['Package'][0]">$td['Package'][0]</a></td>
-    <td id="$td['From'][0]">     $td['From'][1]    </td>
-    <td id="$td['Bleeding'][0]">$td['Bleeding'][1]</td>
-    <td id="$td['Official'][0]">$td['Official'][1]</td>
-    <td id="$td['Backport'][0]">$td['Backport'][1]</td>
-    $for a in archs:
-        <td  id="$td[a][1]"><a href="/job/$td[a][0]">$td[a][1]</a></td>
-    <td id="$td['Mode']">$td['Mode']</td>
-    <td>$td['Last schedule']</td>
+    <td id="package"><a href="/package/$b.pkg">$b.pkg</a></td>
+    <td id=$b.origin>$b.origin</a></td>
+    <td>$b.bleeding</a></td>
+    <td>$b.official</a></td>
+    <td>$b.target</a></td>
+    $for arch in archs:
+        <td id=$b.status[arch]>$b.status[arch]</td>
+    <td>$b.policy</a></td>
     </tr>
   </tbody>
 </table>

@@ -116,7 +116,7 @@ class Backport(object):
         return backports
     select = classmethod(select)
 
-    def jobs(cls, progress=None, status=None, orderBy=None):
+    def jobs(cls, dist=None, progress=None, status=None, orderBy=None):
 
         cols  = Database().get_col('backport')
         archs = RebuilddConfig().get('build', 'archs').split()
@@ -124,7 +124,9 @@ class Backport(object):
         join_pkg = " INNER JOIN package ON package.name=backport.pkg and package.version=backport.target and package.id=job.package_id"
         join_job = " INNER JOIN job ON job.dist=backport.dist"
         if status:
-           join_job += " and job.status=%s" % status
+           join_job += " and job.status=%d" % status
+        if dist:
+           join_job += " and job.dist='%s'" % dist
         stmt = select + join_pkg + join_job
 
         if progress == 'complete':

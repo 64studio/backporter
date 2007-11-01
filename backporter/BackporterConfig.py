@@ -39,9 +39,13 @@ class BackporterConfig(object, ConfigParser.ConfigParser):
 
         # add default sections
         self.add_section('bleeding')
+        self.add_section('http')
 
         # add default values
         self.set('bleeding', 'dists',     'sid local')
+        self.set('http',     'templates', '/usr/share/backporter/templates')
+        self.set('http',     'ip',        '0.0.0.0')
+        self.set('http',     'port',      '9997')
 
         if not dontparse:
             self.reload()
