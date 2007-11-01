@@ -50,3 +50,23 @@ class BackporterConfig(object, ConfigParser.ConfigParser):
         """Reload configuration file"""
 
         return self.read(self.config_file)
+
+    def dump(self):
+        """Dump running configuration"""
+
+        conf = ""
+        for section in self.sections():
+            conf += "[" + section + "]\n"
+            for item, value in self.items(section):
+                conf += "%s = %s\n" % (item, value)
+            conf += "\n"
+        return conf
+
+    def save(self):
+        """Save configuration file"""
+
+        try:
+            self.write(file(self.config_file, 'w'))
+        except Exception, error:
+            return False
+        return True

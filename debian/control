@@ -1,0 +1,14 @@
+Source: backporter
+Section: devel
+Priority: extra
+Maintainer: Free Elanayaka <free@64studio.com>
+Build-Depends: cdbs, debhelper (>= 5), python2.5, python-support, xsltproc, docbook-xsl, python-pysqlite2, rebuildd, python-apt
+Standards-Version: 3.7.2
+
+Package: backporter
+Architecture: all
+Suggests: cowdancer
+Recommends: pbuilder, python-gdchart2, python-webpy
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, lsb-base, python-sqlobject, rebuildd
+Description: scheduler for rebuildd aimed to backporting
+ Backports packages from one suite to another

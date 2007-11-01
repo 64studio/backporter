@@ -1,0 +1,29 @@
+#!/usr/bin/make -f
+DEB_PYTHON_SYSTEM=pysupport
+DEB_DH_INSTALL_ARGS=-X.svn
+
+ifneq (,$(findstring UNRELEASED,$(shell head -n 1 debian/changelog)))
+	FINALVERSION=$(shell head -n1 debian/changelog | cut -d\( -f2 | cut -d\) -f1)
+	VERSION="$(FINALVERSION)-r$(shell svn info -R | grep 'Last Changed Rev' | cut -d' ' -f4 | sort -rn | head -n 1)"
+else
+	VERSION=$(shell head -n1 debian/changelog | cut -d\( -f2 | cut -d\) -f1)
+endif
+
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/class/python-distutils.mk
+
+build/backporter:: build-stamp-backporter
+build-stamp-backporter:
+	@echo Running test suite
+	./tests/runtest.py
+	printf 'from backporter.BackporterConfig import BackporterConfig\nprint BackporterConfig(True).dump()\n' | python > debian/backporter.conf
+	touch build-stamp-backporter
+
+install/backporter::
+	install -d debian/backporter/usr/bin
+	install -m 0755 scripts/backporter.py debian/backporter/usr/bin/backporter
+	sed -i "s,^__version__.*$=,__version__ = \"$(VERSION)\"," debian/backporter/usr/lib/python2.5/site-packages/backporter/*.py
+
+cleanbuilddir/backporter::
+	rm -f debian/backporter.conf
+	rm -f build-stamp-backporter
