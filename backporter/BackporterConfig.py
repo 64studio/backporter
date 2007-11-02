@@ -24,7 +24,7 @@ __all__ = ['BackporterConfig']
 class BackporterConfig(object, ConfigParser.ConfigParser):
     """Main configuration singleton"""
 
-    config_file = "/etc/backporter/backporter.conf"
+    config_file = "/etc/backporter.conf"
 
     _instance = None
 

@@ -23,7 +23,7 @@ import socket
 import apt_pkg
 
 from rebuildd.RebuilddConfig     import RebuilddConfig
-from rebuildd.JobStatus          import JobStatus
+from rebuildd.JobStatus          import JobStatus, FailedStatus
 
 from backporter.BackporterConfig import BackporterConfig
 from backporter.Database         import Database
@@ -69,7 +69,7 @@ class Backporter(object):
         p = Backport()
         p.pkg      = None
         p.dist     = None
-        p.status = {}
+        p.jobs = {}
 
         for b in [d] + Backport.jobs(dist=dist, orderBy='backport.pkg,backport.dist,job.id DESC') + [d]:
 
@@ -90,13 +90,13 @@ class Backporter(object):
                 p.archs     = b.archs
                 p.policy    = b.policy
                 p.progress  = b.progress
-                p.status    = {}
+                p.jobs    = {}
                 for arch in self.archs:
-                    p.status[arch] = JobStatus.UNKNOWN
+                    p.jobs[arch] = Job()
 
             # This is not a dummy element, update the status
-            if p.pkg and p.status[b.job.arch] == JobStatus.UNKNOWN:
-                p.status[b.job.arch] = b.job.status
+            if p.pkg and p.jobs[b.job.arch].status == JobStatus.UNKNOWN:
+                p.jobs[b.job.arch] = b.job
 
         return backports
 
@@ -249,9 +249,9 @@ class Backporter(object):
         p.pkg      = None
         p.target   = '0'
         p.arch     = None
-        for b in Backport.jobs(progress='partial', status=JobStatus.DEPWAIT, orderBy='backport.pkg, backport.target, job.arch, job.id'):
+        for b in Backport.jobs(progress='partial', status=FailedStatus, orderBy='backport.pkg, backport.target, job.arch, job.id'):
 
-            # Skip oldor schedules for the same backport
+            # Skip older schedules for the same backport
             if p.pkg == b.pkg and p.target == b.target and p.arch == b.arch:
                 continue
 
@@ -260,21 +260,25 @@ class Backporter(object):
             if b.job.arch in b.archs:
                 continue
 
-            # Nothing has changed for this arch..
-            if not b.job.arch in new_builds:
-                continue
-
             # We are either Never or Once..
             if not (b.policy == BackportPolicy.Always.Value or b.policy == BackportPolicy.Smart.Value):
                 continue
             
-            # Let's try again!
-            j = Job()
-            j.status = JobStatus.WAIT
-            j.package_id = Package(b.pkg,b.target).id # The package element MUST be there..
-            j.dist = b.dist
-            j.arch = b.job.arch
-            j.insert()
+            # Always means always
+            if b.policy == BackportPolicy.Always.Value:
+                Job.schedule(b.pkg, b.target, b.dist, b.job.arch)
+                continue
+
+            # Try to be smart
+            if b.policy == BackportPolicy.Smart.Value:
+                # Nothing has changed for this arch..
+                if not b.job.arch in new_builds:
+                    continue
+                # We consider only depwaits
+                if not b.job.status == JobStatus.DEPWAIT:
+                    continue
+                # Let's try again!
+                Job.schedule(b.pkg, b.target, b.dist, b.job.arch)
 
         # Schedule new jobs
         for b in Backport.select(progress='null'):
@@ -293,22 +297,5 @@ class Backporter(object):
             b.target   = b.bleeding + "~%s1" % b.dist
             b.update()
 
-            # Get the package element, create it if needed
-            try:
-                p = Package(b.pkg,b.target)
-            except Exception, e:
-                p = Package()
-                p.name    = b.pkg
-                p.version = b.target
-                p.insert()
-                p = Package(b.pkg,b.target) # This query could probably be avoided
-
             for arch in self.archs:
-
-                # Add a new job
-                j = Job()
-                j.status = JobStatus.WAIT
-                j.package_id = p.id
-                j.dist = b.dist
-                j.arch = arch
-                j.insert()
+                Job.schedule(b.pkg, b.target, b.dist, arch)

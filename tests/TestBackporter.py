@@ -126,7 +126,12 @@ class TestBackporter(unittest.TestCase):
         Backporter().schedule()
 
         # We should have again 2 jobs for the DEPWAITs
-        self.assertEqual(len(Job.select()), 8 + 2 + 4 +2)
+        self.assertEqual(len(Job.select()), 8 + 2 + 4 + 2)
+
+        # Now let's force alsa-firmware/etch/i386 re-schedule
+        Backporter().set('alsa-driver', 'etch', 'policy', BackportPolicy.Always.Value)
+        Backporter().schedule()
+        self.assertEqual(len(Job.select()), 8 + 2 + 4 + 2 + 1)
 
 if __name__ == '__main__':
     Database(path=':memory:')

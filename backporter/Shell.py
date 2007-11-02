@@ -119,11 +119,12 @@ class Shell(cmd.Cmd):
         self._print_listing(fields, Backporter().list())
 
     def do_status(self, arg):
+        archs = Backporter().archs
         cols = ['Package', 'Dist', 'Origin', 'Bleeding', 'Official', 'Target', 'Archs', 'Progress', 'Policy']
-        cols += Backporter().archs
+        cols += archs
         rows = []
         for b in Backporter().status():
-            rows.append((b.pkg, b.dist, b.origin, b.bleeding, b.official, b.target, b.archs, str(b.progress), BackportPolicy[b.policy]) + tuple(b.status.values()))
+            rows.append((b.pkg, b.dist, b.origin, b.bleeding, b.official, b.target, b.archs, str(b.progress), BackportPolicy[b.policy]) + tuple(b.jobs[arch].status for arch in archs))
 
         self._print_listing(cols, rows)
 

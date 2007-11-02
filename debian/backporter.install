@@ -1,1 +1,2 @@
 debian/backporter.conf	etc
+templates/	usr/share/backporter

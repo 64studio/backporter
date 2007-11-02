@@ -23,12 +23,16 @@ import socket
 import os
 
 from rebuildd.JobStatus          import JobStatus
+from rebuildd.RebuilddConfig     import RebuilddConfig
+from rebuildd.Rebuildd           import Rebuildd
+from rebuildd.RebuilddHTTPServer import RequestPackage, RequestArch, RequestJob, RequestGraph
 from backporter.Backporter       import Backporter
 from backporter.Models           import BackportPolicy
 from backporter.BackporterConfig import BackporterConfig
 from backporter.Enum             import Enum
 
-render = web.template.render(BackporterConfig().get('http', 'templates'),cache=False)
+render = web.template.render(RebuilddConfig().get('http', 'templates_dir'),cache=False)
+bp_render = web.template.render(BackporterConfig().get('http', 'templates'),cache=False)
 dists = Backporter().rdists
 archs = Backporter().archs
 
@@ -38,7 +42,7 @@ class RequestIndex:
 
     def GET(self):
 
-        print render.base(page=render.index(), \
+        print bp_render.base(page=render.index(), \
                 hostname=socket.gethostname(), \
                 dists=dists)
 
@@ -57,7 +61,7 @@ def status_to_html(text):
     else:
         return text
 
-class RequestDist:
+class RequestBackport:
 
     def GET(self, dist, policy=None):
 
@@ -67,58 +71,25 @@ class RequestDist:
         for b in backports:
             b.policy = BackportPolicy[b.policy]
             for arch in archs:
-                b.status[arch] = status_to_html(JobStatus.whatis(b.status[arch]))
+                b.jobs[arch].status = status_to_html(JobStatus.whatis(b.jobs[arch].status))
 
-        print render.base(page=render.dist(backports=backports, dist=dist, archs=archs, policy=policy), \
+        print bp_render.base(page=bp_render.backport(backports=backports, dist=dist, archs=archs, policy=policy), \
                 hostname=socket.gethostname(), dists=dists)
-
-class RequestJob:
-
-    def GET(self, jobid=None):
-
-        dists = Dist.select(DistType.Released.Value)
-        j = Job(id=int(jobid))
-        j.package = Package(id=j.package_id)
-        j.creation_date = j.creation_date[:-7]
-        try:
-            build_logfile = open(j.logfile(), "r")
-            build_log = build_logfile.read()
-        except IOError, error:
-            build_log = "No build log available"
-        print render.base(page=render.job(job=j, build_log=build_log), \
-                hostname=socket.gethostname(), \
-                title="job %s" % j.id,\
-                dists=dists)
-
-class RequestPackage:
-
-    def GET(self, name=None):
-        jobs = []
-
-        dists = Dist.select(DistType.Released.Value)
-
-        for p in Package.select(name=name):
-            for j in Job.select(package_id=p.id):
-                j.package = p
-                jobs.append(j)
-        print render.base(page=render.package(jobs=jobs), \
-                hostname=socket.gethostname(), \
-                title="package %s" % name, \
-                dists=dists)
 
 class BackporterWeb:
     """Main HTTP server"""
 
     urls = (
             '/', 'RequestIndex',
-            '/dist/(.*)/(.*)', 'RequestDist',
-            '/dist/(.*)', 'RequestDist',
-            '/job/(.*)',  'RequestJob',
-            '/package/(.*)',  'RequestPackage',
+            '/backport/(.*)/(.*)', 'RequestBackport',
+            '/backport/(.*)', 'RequestBackport',
+            '/job/(.*)', 'RequestJob',
+            '/dist/(.*)/arch/(.*)', 'RequestArch',
             )
 
     def __init__(self):
         Backporter()
+        Rebuildd()
 
     def start(self):
 

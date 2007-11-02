@@ -23,6 +23,7 @@ install/backporter::
 	install -d debian/backporter/usr/bin
 	install -m 0755 backporter.py debian/backporter/usr/bin/backporter
 	install -m 0755 backporter-http.py debian/backporter/usr/bin/backporter-http
+	ln -s ./backporter.css	debian/backporter/usr/share/backporter/templates/static/rebuildd.css
 	sed -i "s,^__version__.*$=,__version__ = \"$(VERSION)\"," debian/backporter/usr/lib/python2.5/site-packages/backporter/*.py
 
 cleanbuilddir/backporter::

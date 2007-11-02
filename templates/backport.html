@@ -25,7 +25,7 @@ $for b in backports:
     <td>$b.official</a></td>
     <td>$b.target</a></td>
     $for arch in archs:
-        <td id=$b.status[arch]>$b.status[arch]</td>
+        <td id=$b.jobs[arch].status><a href="/job/$b.jobs[arch].id">$b.jobs[arch].status</a></td>
     <td>$b.policy</a></td>
     </tr>
   </tbody>

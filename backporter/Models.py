@@ -10,8 +10,9 @@ import string
 import apt_pkg
 import datetime
 import os
-from rebuildd.RebuilddConfig import RebuilddConfig
 
+from rebuildd.RebuilddConfig import RebuilddConfig
+from rebuildd.JobStatus          import JobStatus
 from backporter.Database import Database
 from backporter.BackporterConfig import BackporterConfig
 from backporter.BackporterError import BackporterError
@@ -123,7 +124,9 @@ class Backport(object):
         select = "SELECT %s, job.id, job.status, job.arch FROM backport" % ", ".join(['backport.%s' % c for c in cols])
         join_pkg = " INNER JOIN package ON package.name=backport.pkg and package.version=backport.target and package.id=job.package_id"
         join_job = " INNER JOIN job ON job.dist=backport.dist"
-        if status:
+        if type(status) == tuple:
+           join_job += " and job.status IN (%s)" % ", ".join(str(s) for s in status)
+        if type(status) == int:
            join_job += " and job.status=%d" % status
         if dist:
            join_job += " and job.dist='%s'" % dist
@@ -162,6 +165,7 @@ class Backport(object):
             backports.append(b)
         return backports
     jobs = classmethod(jobs)
+
 
 #
 # Package
@@ -256,7 +260,7 @@ class Job(object):
             self.host           = row[9]
         else:
             self.id             = None
-            self.status         = None
+            self.status         = JobStatus.UNKNOWN
             self.mailto         = None
             self.package_id     = None
             self.dist           = None
@@ -415,3 +419,24 @@ class Job(object):
             jobs.append(j)
         return jobs
     join = classmethod(join)
+
+    def schedule(cls, package, version, dist, arch):
+
+        # Get the package element, create it if needed
+        try:
+            p = Package(package, version)
+        except Exception, e:
+            p = Package()
+            p.name    = package
+            p.version = version
+            p.insert()
+            p = Package(package, version) # This query could probably be avoided
+
+        j = cls()
+        j.status = JobStatus.WAIT
+        j.package_id = p.id
+        j.dist = dist
+        j.arch = arch
+        j.insert()
+
+    schedule = classmethod(schedule)
