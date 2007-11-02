@@ -216,6 +216,11 @@ class Backporter(object):
 
         # Init the counter of new BUILD_OK for each arch
         new_builds = set([])
+        building = set([])
+
+        # Don't schedule process that are BUILDING
+        for b in Backport.jobs(progress='partial', status=JobStatus.BUILDING, orderBy='backport.pkg,backport.dist'):
+            building.add(b.pkg)
 
         # Process BUILD_OK backports first
         p = Backport()
@@ -262,6 +267,10 @@ class Backporter(object):
 
             # There is already a BUILD_OK for this backport/arch, this is probably a previously failed job
             if b.job.arch in b.archs:
+                continue
+
+            # We are already building
+            if b.pkg in building:
                 continue
 
             # We are either Never or Once..
