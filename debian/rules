@@ -21,7 +21,8 @@ build-stamp-backporter:
 
 install/backporter::
 	install -d debian/backporter/usr/bin
-	install -m 0755 scripts/backporter.py debian/backporter/usr/bin/backporter
+	install -m 0755 backporter.py debian/backporter/usr/bin/backporter
+	install -m 0755 backporter-http.py debian/backporter/usr/bin/backporter-http
 	sed -i "s,^__version__.*$=,__version__ = \"$(VERSION)\"," debian/backporter/usr/lib/python2.5/site-packages/backporter/*.py
 
 cleanbuilddir/backporter::
