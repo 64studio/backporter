@@ -248,15 +248,19 @@ class Backporter(object):
         p = Backport()
         p.pkg      = None
         p.target   = '0'
-        p.arch     = None
+        p.job      = Job()
         for b in Backport.jobs(progress='partial', status=FailedStatus, orderBy='backport.pkg, backport.target, job.arch, job.id'):
 
             # Skip older schedules for the same backport
-            if p.pkg == b.pkg and p.target == b.target and p.arch == b.arch:
+            if p.pkg == b.pkg and p.target == b.target and p.job.arch == b.job.arch:
                 continue
 
-            # There is already a BUILD_OK for this backport/arch, this is probably
-            # a previously failed job
+            # New pkg group
+            p.pkg      = b.pkg
+            p.target   = b.target
+            p.job.arch = b.job.arch
+
+            # There is already a BUILD_OK for this backport/arch, this is probably a previously failed job
             if b.job.arch in b.archs:
                 continue
 
