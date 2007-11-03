@@ -85,6 +85,8 @@ class BackporterWeb:
             '/backport/(.*)', 'RequestBackport',
             '/job/(.*)', 'RequestJob',
             '/dist/(.*)/arch/(.*)', 'RequestArch',
+            '/package/(.*)/(.*)', 'RequestPackage',
+            '/package/(.*)', 'RequestPackage',
             )
 
     def __init__(self):

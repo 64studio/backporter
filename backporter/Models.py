@@ -289,7 +289,7 @@ class Job(object):
                 self.package_id,
                 self.dist,
                 self.arch,
-                datetime.datetime.now()))
+                datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
         self.cnx.commit()
 
     def update(self):
