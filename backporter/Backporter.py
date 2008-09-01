@@ -20,7 +20,13 @@ import os
 import re
 import telnetlib
 import socket
+
+import warnings
+warnings.filterwarnings("ignore", module='apt')
+del warnings
+
 import apt_pkg
+import apt
 
 from rebuildd.RebuilddConfig     import RebuilddConfig
 from rebuildd.JobStatus          import JobStatus, FailedStatus
@@ -46,12 +52,27 @@ class Backporter(object):
 
     def init(self):
 
-        # Dists to consider as bleeding
-        self.bdists = BackporterConfig().get('bleeding', 'dists').split()
+        # Dist URIs
+        self.uris = {}
 
-        # Dists to consider as official releases
-        self.rdists = RebuilddConfig().get('build', 'dists').split()
-        self.archs = RebuilddConfig().get('build', 'archs').split()
+        # Dists to consider as bleeding
+        self.bdists = []
+        for item in BackporterConfig().items('bleeding'):
+            dist = item[0]
+            uri  = item[1]
+            self.bdists.append(dist)
+            self.uris[dist] = uri
+
+        # Dists to consider as bleeding
+        self.rdists = []
+        for item in BackporterConfig().items('released'):
+            dist = item[0]
+            uri  = item[1]
+            self.rdists.append(dist)
+            self.uris[dist] = uri
+
+        self.archs = RebuilddConfig().get('build', 'more_archs').split()
+        self.apt_dir = '/var/cache/backporter/'
 
     def list(self):
         data = []
@@ -109,6 +130,7 @@ class Backporter(object):
        for dist in dists:
            b.pkg     = pkg
            b.dist    = dist
+           b.origin   = 'sid'
            b.bleeding = '0'
            b.official = '0'
            b.target   = '0'
@@ -145,7 +167,7 @@ class Backporter(object):
         bdist = self.bdists[0]
         for dist in self.bdists:
             if self._vercmp(lookup[dist], lookup[bdist]) >= 1:
-                bdist =dist
+                bdist = dist
         return bdist
 
     # Download and repack a source
@@ -153,7 +175,8 @@ class Backporter(object):
 
         # Download the source
         src_dir = None
-        for line in os.popen('apt-get %s source %s=%s' % (opts or '', pkg, ver)).readlines():
+        cmd='apt-get -c %s %s source %s=%s' % (self.apt_dir + 'apt.conf', opts or '', pkg, ver)
+        for line in os.popen(cmd).readlines():
             print line.strip()
             if line.startswith('dpkg-source: extracting %s in' % pkg):
                 src_dir = line.split()[-1]
@@ -177,30 +200,70 @@ class Backporter(object):
     def update(self):
 
         # Init Python APT
+        apt_dir = self.apt_dir
+        apt_cnf = { 'Dir::Etc'             : apt_dir,
+                    'Dir::Etc::sourcelist' : 'sources.list',
+                    'Dir::State'           : apt_dir,
+                    'Dir::State::lists'    : 'lists',
+                    'Dir::State::status'   : 'status',
+                    'Dir::Cache'           : apt_dir,
+                    'Dir::Cache::archives' : apt_dir,
+                    'Dir::Cache::srcpkgcache' : 'srcpkgcache.bin',
+                    'Dir::Cache::pkgcache' : 'pkgcache.bin' }
+
+        apt_cnf_file = open(apt_dir + 'apt.conf', 'w+')
+        for key in apt_cnf:
+            apt_pkg.Config.Set(key, apt_cnf[key])
+            apt_cnf_file.write("%s \"%s\";\n" % (key, apt_cnf[key]))
+
+        try:
+            os.mkdir(apt_dir + apt_cnf['Dir::State::lists'])
+            os.mkdir(apt_dir + apt_cnf['Dir::State::lists'] + '/partial')
+            os.mkdir(apt_dir + '/partial')
+            os.system('touch %s' % apt_dir + apt_cnf['Dir::State::status'])
+        except OSError:
+            pass
+
+        apt_lst = open(apt_dir + apt_cnf['Dir::Etc::sourcelist'], 'w+')
+        for dist in self.bdists + self.rdists:
+            apt_lst.write(self.uris[dist] + '\n')
+        apt_lst.close()
+
+        c = apt.Cache()
+        c.update(apt.progress.TextFetchProgress())
+
         sources = apt_pkg.GetPkgSrcRecords()
         sources.Restart()
         lookup = {}
-                
+
         # Iterate over backports
         p = Backport()
         for b in Backport.select(orderBy='pkg'):
-            # New group of pkg backpors, look up what APT says..
+            # New group of pkg backports, look up what APT says..
             if b.pkg != p.pkg:
                 p.pkg = b.pkg
                 for dist in self.rdists + self.bdists:
                     lookup[dist] = '0'
                 while sources.Lookup(b.pkg): # TODO: consider Architecture
-                    ver  = sources.Version
-                    dist = sources.Index.Describe.split()[1].split('/')[0]
-                    lookup[dist] = ver
-                bdist = self._bleeding(lookup)
-                lookup['origin']   = bdist
-                lookup['bleeding'] = lookup[bdist]
+                    ver     = sources.Version
+                    archive = sources.Index.Describe.split()[1].split('/')[0]
+                    origin  = sources.Index.Describe.split()[0]
+                    # guess to which distribution does APT this record belong
+                    for dist in self.rdists + self.bdists:
+                        dist_origin  = '/'.join(self.uris[dist].split()[1].split('/')[0:3])
+                        dist_archive = self.uris[dist].split()[2]
+                        if origin != dist_origin:
+                            continue
+                        if archive != dist_archive:
+                            continue
+                        lookup[dist] = ver
+                        break
 
-            # We have a new bleeding version is changed
-            if self._vercmp(lookup['bleeding'], b.bleeding) >= 1:
+                lookup['bleeding'] = lookup[b.origin] # this can be '0'
+
+            # We have a new bleeding version
+            if self._vercmp(lookup['bleeding'], b.bleeding) != 0:
                 b.bleeding = lookup['bleeding']
-                b.origin   = lookup['origin']
                 b.progress = -1
                 b.archs    = []
             # We have a new official version, maybe a stable update..

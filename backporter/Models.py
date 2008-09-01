@@ -90,7 +90,7 @@ class Backport(object):
     def select(cls, orderBy=None, progress=None):
         cols  = ",".join(Database().get_col('backport'))
         stmt  = "SELECT %s FROM backport" % cols
-        archs = RebuilddConfig().get('build', 'archs').split()
+        archs = RebuilddConfig().get('build', 'more_archs').split()
         if progress == 'complete':
             stmt += " WHERE progress = %d" % len(archs)
         if progress == 'partial':
@@ -120,7 +120,7 @@ class Backport(object):
     def jobs(cls, dist=None, progress=None, status=None, orderBy=None):
 
         cols  = Database().get_col('backport')
-        archs = RebuilddConfig().get('build', 'archs').split()
+        archs = RebuilddConfig().get('build', 'more_archs').split()
         select = "SELECT %s, job.id, job.status, job.arch FROM backport" % ", ".join(['backport.%s' % c for c in cols])
         join_pkg = " INNER JOIN package ON package.name=backport.pkg and package.version=backport.target and package.id=job.package_id"
         join_job = " INNER JOIN job ON job.dist=backport.dist"

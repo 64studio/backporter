@@ -111,6 +111,13 @@ class Shell(cmd.Cmd):
             val = getattr(getattr(BackportPolicy, rest[1]), 'Value')
             Backporter().set(pkg, dist, opt, val)
             return 1
+        if rest[0] in ['origin']:
+            opt = rest[0]
+            val = rest[1]
+            if val not in Backporter().bdists:
+                self._exit_with_error('%s is not a valid origin' % val)
+            Backporter().set(pkg, dist, opt, val)
+            return 1
         self._exit_with_error('Unknown option')
         
 
@@ -160,7 +167,6 @@ class Shell(cmd.Cmd):
             opts = " ".join(arg[4:])
         else:
             opts = None
-
         return Backporter().source(dist, pkg, ver, opts)
 
     ## Update versions
