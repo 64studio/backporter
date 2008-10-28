@@ -19,14 +19,14 @@ $if policy == "all":
   <tbody>
 $for b in backports:
     <tr>
-    <td id="package"><a href="/package/$b.pkg">$b.pkg</a></td>
-    <td id=$b.origin>$b.origin</a></td>
-    <td>$b.policy</a></td>
+    <td class="package"><a href="/package/$b.pkg">$b.pkg</a></td>
+    <td class=$b.origin>$b.origin</a></td>
+    <td class=$b.policy>$b.policy</a></td>
     <td>$b.bleeding</a></td>
     <td>$b.official</a></td>
     <td>$b.target</a></td>
     $for arch in archs:
-        <td id=$b.jobs[arch].status><a href="/job/$b.jobs[arch].id">$b.jobs[arch].status</a></td>
+        <td class=$b.jobs[arch].status><a href="/job/$b.jobs[arch].id">$b.jobs[arch].status</a></td>
     </tr>
   </tbody>
 </table>

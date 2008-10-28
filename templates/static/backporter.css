@@ -34,45 +34,61 @@ td {
     vertical-align: top;
 }
 
-td#package {
+td.package {
     font-weight: bold;
     color: black;
     text-align: left;
 }
-td#package:hover { background: #FFA500; }
+td.package:hover { background: #FFA500; }
 
-td#sid {
-    background: #FFFF87
+td.Never {
+    background: #FFFFDD
 }
 
-td#local {
-    background: #FFBE9E
+td.Always {
+    background: #FFE7BB
 }
 
-td#Bleeding {
+td.Smart {
+    background: #FFFFBB
+}
+
+td.sid {
+    background: #E7FFFF
+}
+
+td.medibuntu {
+    background: #DDFFFF
+}
+
+td.experimental {
+    background: #DDE7FF
+}
+
+td.Bleeding {
     background: #F7C87C
 }
-td#Newer {
+td.Newer {
     background: #DB92C9
 }
-td#Backport {
+td.Backport {
     background: #E6E67A
 }
-td#OutOfDate {
+td.OutOfDate {
     background: #FFFF87
 }
-td#OK {
+td.OK {
     background: #CAFF70
 }
-td#FAILED {
+td.FAILED {
     background: #E0864F
 }
-td#BUILDING {
+td.BUILDING {
     background: #FFCEB5
 }
-td#WAIT {
+td.WAIT {
     background: #FFDDCC
 }
-td#DEPWAIT {
+td.DEPWAIT {
     background: #FFBE9E
 }
