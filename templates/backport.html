@@ -9,24 +9,24 @@ $if policy == "all":
     <tr>
       <th>Package</th>
       <th>Origin</th>
+      <th>Policy</th>
       <th>Bleeding</th>
       <th>Official</th>
       <th>Target</th>
       $for a in archs:
           <th>$a</th>
-      <th>Policy</th>
   </thead>
   <tbody>
 $for b in backports:
     <tr>
     <td id="package"><a href="/package/$b.pkg">$b.pkg</a></td>
     <td id=$b.origin>$b.origin</a></td>
+    <td>$b.policy</a></td>
     <td>$b.bleeding</a></td>
     <td>$b.official</a></td>
     <td>$b.target</a></td>
     $for arch in archs:
         <td id=$b.jobs[arch].status><a href="/job/$b.jobs[arch].id">$b.jobs[arch].status</a></td>
-    <td>$b.policy</a></td>
     </tr>
   </tbody>
 </table>
