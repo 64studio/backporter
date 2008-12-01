@@ -239,6 +239,11 @@ class Backporter(object):
         # Iterate over backports
         p = Backport()
         for b in Backport.select(orderBy='pkg'):
+
+            # Skip backports with policy Never
+            if (b.policy == BackportPolicy.Never.Value ):
+                continue
+
             # New group of pkg backports, look up what APT says..
             if b.pkg != p.pkg:
                 p.pkg = b.pkg
