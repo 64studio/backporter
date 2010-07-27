@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.5
+#!/usr/bin/env python2.6
 
 __author__ = 'Free Ekanayaka <free@64studio.com>'
 __copyright__ = 'Copyright (c) 2007 Free Ekanayaka'

@@ -1,3 +1,9 @@
+backporter (0.11) lucid; urgency=low
+
+  * Test version removing etch references
+
+ -- Daniel James <daniel@64studio.com>  Fri, 25 Jun 2010 11:11:14 +0100
+
 backporter (0.1) UNRELEASED; urgency=low
 
   * Initial release

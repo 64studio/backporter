@@ -1,8 +1,8 @@
 Source: backporter
 Section: devel
 Priority: extra
-Maintainer: Free Elanayaka <free@64studio.com>
-Build-Depends: cdbs, debhelper (>= 5), python2.5, python-support, xsltproc, docbook-xsl, python-pysqlite2, rebuildd (>= 0.3), python-apt
+Maintainer: Free Ekanayaka <free@64studio.com>
+Build-Depends: cdbs, debhelper (>= 5), python2.6, python-support, xsltproc, docbook-xsl, python-pysqlite2, rebuildd (>= 0.3), python-apt
 Standards-Version: 3.7.2
 
 Package: backporter
