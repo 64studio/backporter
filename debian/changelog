@@ -1,4 +1,10 @@
-backporter (0.11) lucid; urgency=low
+backporter (0.12) 64studio; urgency=low
+
+  * Second test version with Lucid tweaks
+
+ -- Daniel James <daniel@64studio.com>  Wed, 28 Jul 2010 16:31:16 +0100
+
+backporter (0.11) 64studio; urgency=low
 
   * Test version removing etch references
 

@@ -1,2 +1,4 @@
 usr/bin
 usr/share/backporter/templates/static
+var/cache/backporter
+var/cache/backporter/preferences.d
