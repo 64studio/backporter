@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.5
+#!/usr/bin/env python2.6
 import sys  
   
 sys.path.insert(0, "..")  
@@ -22,10 +22,10 @@ class TestBackporter(unittest.TestCase):
 	Database().clean()
         RebuilddConfig().set('build', 'archs', 'i386 amd64')
 
-        self.backports = (('alsa-driver',   'etch',  BackportPolicy.Smart.Value),
-                          ('alsa-driver',   'gutsy', BackportPolicy.Smart.Value),
-                          ('alsa-firmware', 'etch',  BackportPolicy.Smart.Value),
-                          ('alsa-firmware', 'gutsy', BackportPolicy.Smart.Value))
+        self.backports = (('alsa-driver',   'lenny',  BackportPolicy.Smart.Value),
+                          ('alsa-driver',   'lucid', BackportPolicy.Smart.Value),
+                          ('alsa-firmware', 'lenny',  BackportPolicy.Smart.Value),
+                          ('alsa-firmware', 'lucid', BackportPolicy.Smart.Value))
 
         for backport in self.backports:
             Backporter().add(backport[0], backport[1])
@@ -48,17 +48,17 @@ class TestBackporter(unittest.TestCase):
         Backporter().schedule()
 
         status = {'alsa-driver':
-                      {'etch':
+                      {'lenny':
                            {'i386' :JobStatus.BUILD_FAILED,
                             'amd64':JobStatus.BUILD_OK},
-                       'gutsy':
+                       'lucid':
                            {'i386' :JobStatus.BUILD_OK,
                             'amd64':JobStatus.BUILD_OK}},
                   'alsa-firmware':
-                      {'etch':
+                      {'lenny':
                            {'i386' :JobStatus.BUILD_OK,
                             'amd64':JobStatus.DEPWAIT},
-                       'gutsy':
+                       'lucid':
                            {'i386' :JobStatus.BUILD_OK,
                             'amd64':JobStatus.DEPWAIT}},
                   }
@@ -83,12 +83,12 @@ class TestBackporter(unittest.TestCase):
                 jobs[0].update()
 
         Backporter().schedule()
-        self.assertEqual(Backport('alsa-driver','etch').progress,1)
-        self.assertEqual(Backport('alsa-driver','etch').archs,['amd64'])
-        self.assertEqual(Backport('alsa-driver','gutsy').progress,2)
-        self.assertEqual(Backport('alsa-firmware','etch').progress,1)
-        self.assertEqual(Backport('alsa-firmware','etch').archs,['i386'])
-        self.assertEqual(Backport('alsa-firmware','gutsy').archs,['i386'])
+        self.assertEqual(Backport('alsa-driver','lenny').progress,1)
+        self.assertEqual(Backport('alsa-driver','lenny').archs,['amd64'])
+        self.assertEqual(Backport('alsa-driver','lucid').progress,2)
+        self.assertEqual(Backport('alsa-firmware','lenny').progress,1)
+        self.assertEqual(Backport('alsa-firmware','lenny').archs,['i386'])
+        self.assertEqual(Backport('alsa-firmware','lucid').archs,['i386'])
 
         # We should have two more jobs (for the DEPWAITs)
         self.assertEqual(len(Job.select()), 8 + 2)
@@ -98,8 +98,8 @@ class TestBackporter(unittest.TestCase):
         self.assertEqual(len(Job.select()), 8 + 2)
 
         # Let's add a backport to solve the DEPWAIT
-        self.backports = (('freecycle',     'etch',  BackportPolicy.Smart.Value),
-                          ('freecycle',     'gutsy', BackportPolicy.Smart.Value))
+        self.backports = (('freecycle',     'lenny',  BackportPolicy.Smart.Value),
+                          ('freecycle',     'lucid', BackportPolicy.Smart.Value))
 
         for backport in self.backports:
             Backporter().add(backport[0], backport[1])
@@ -113,7 +113,7 @@ class TestBackporter(unittest.TestCase):
         self.assertEqual(len(Job.select()), 8 + 2 + 4)
 
         # Let's say they are all succesful..
-        for dist in ['etch', 'gutsy']:
+        for dist in ['lenny', 'lucid']:
             b = Backport('freecycle',dist)
             p = Package(b.pkg, b.target)
 
@@ -128,8 +128,8 @@ class TestBackporter(unittest.TestCase):
         # We should have again 2 jobs for the DEPWAITs
         self.assertEqual(len(Job.select()), 8 + 2 + 4 + 2)
 
-        # Now let's force alsa-firmware/etch/i386 re-schedule
-        Backporter().set('alsa-driver', 'etch', 'policy', BackportPolicy.Always.Value)
+        # Now let's force alsa-firmware/lenny/i386 re-schedule
+        Backporter().set('alsa-driver', 'lenny', 'policy', BackportPolicy.Always.Value)
         Backporter().schedule()
         self.assertEqual(len(Job.select()), 8 + 2 + 4 + 2 + 1)
 

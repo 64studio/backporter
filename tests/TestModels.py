@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.5
+#!/usr/bin/env python2.6
 import sys  
   
 sys.path.insert(0, "..")  
@@ -55,7 +55,7 @@ class TestJob(unittest.TestCase):
         self.j = Job()
         self.j.package_id  = 1
         self.j.arch  = 'amd64'
-        self.j.dist  = 'etch'
+        self.j.dist  = 'lenny'
 
     def test_init(self):
         self.assert_(type(self.j) is Job)
@@ -84,13 +84,13 @@ class TestJob(unittest.TestCase):
             (p.id, p.name, p.version) = package
             p.insert()
             j = Job()
-            (j.package_id, j.dist, j.arch) = (p.id, 'etch', 'amd64')
+            (j.package_id, j.dist, j.arch) = (p.id, 'lenny', 'amd64')
             j.insert()
-            (j.package_id, j.dist, j.arch) = (p.id, 'etch', 'i386')
+            (j.package_id, j.dist, j.arch) = (p.id, 'lenny', 'i386')
             j.insert()
 
         self.assertEqual(len(Job().select()), 6)
-        self.assertEqual(len(Job().select(package_id=1,dist='etch',arch='i386')), 1)
+        self.assertEqual(len(Job().select(package_id=1,dist='lenny',arch='i386')), 1)
 
     def test_delete(self):
         self.j.insert()
@@ -104,17 +104,17 @@ class TestBackport(unittest.TestCase):
 	Database().clean()
         self.b = Backport()
         self.b.pkg  = 'libgig'
-        self.b.dist = 'etch'
+        self.b.dist = 'lenny'
 
     def test_init(self):
         self.assert_(type(self.b) is Backport)
         def raiseme(pkg, dist):
             Backport(pkg=pkg, dist=dist)
-        self.assertRaises(BackporterError, raiseme, 'libgig','etch')
+        self.assertRaises(BackporterError, raiseme, 'libgig','lenny')
 
     def test_insert(self):
         self.b.insert()
-        b = Backport('libgig','etch')
+        b = Backport('libgig','lenny')
         self.assertEqual(self.b.pkg, b.pkg)
         self.assertEqual(self.b.dist, b.dist)
         self.assertRaises(sqlite.IntegrityError,b.insert)
@@ -125,7 +125,7 @@ class TestBackport(unittest.TestCase):
         self.b.archs.append('i386')
         self.b.progress = -1
         self.b.update()
-        b = Backport('libgig','etch')
+        b = Backport('libgig','lenny')
         self.assertEqual(b.origin, 'sid')
         self.assertEqual(b.progress, -1)
         self.assertEqual(b.archs, ['i386'])
@@ -135,7 +135,7 @@ class TestBackport(unittest.TestCase):
         self.assertEqual(len(Backport().select()), 1)
         b = Backport()
         b.pkg  = 'liblscp'
-        b.dist = 'etch'
+        b.dist = 'lenny'
         archs = RebuilddConfig().get('build', 'archs').split()
         b.progress = len(archs) - 1
         b.insert()
@@ -143,10 +143,10 @@ class TestBackport(unittest.TestCase):
         self.assertEqual(len(Backport().select(progress='partial')), 1)
         self.assertEqual(len(Backport().select(progress='null')), 1)
         b.pkg  = 'qtractor'
-        b.dist = 'gutsy'
+        b.dist = 'lucid'
         b.insert()
         b.pkg  = 'libgig'
-        b.dist = 'gutsy'
+        b.dist = 'lucid'
         b.insert()
         self.assertEqual([b.pkg for b in Backport().select(orderBy='pkg')], ['libgig','libgig','liblscp','qtractor'])
         self.assertNotEqual([b.pkg for b in Backport().select()], ['libgig','libgig','liblscp','qtractor'])
@@ -175,28 +175,28 @@ class TestBackport(unittest.TestCase):
         RebuilddConfig().set('build', 'archs', 'i386 amd64')
         archs = RebuilddConfig().get('build', 'archs').split()
 
-        backports = (('alsa-driver',   'etch',  '1.0.14-2',    2), # BUILD_OK on etch and DEPWAIT on gutsy
-                     ('alsa-driver',   'gutsy', '1.0.14-2',    0),
-                     ('alsa-firmware', 'etch',  '1.0.15-1',   -1), # Just added backports, not yet scheduled..
-                     ('alsa-firmware', 'gutsy', '1.0.15-1',   -1),
-                     ('ams',           'etch',  '1.8.8-2',     1), # FAILS on etch/amd64 BUILD_OK on gutsy
-                     ('ams',           'gutsy', '1.8.8-2',     2),
-                     ('freecycle',     'etch',  '0.6alpha-2',  1)) # Only etch, DEPWAIT on i386
+        backports = (('alsa-driver',   'lenny',  '1.0.14-2',    2), # BUILD_OK on lenny and DEPWAIT on lucid
+                     ('alsa-driver',   'lucid', '1.0.14-2',    0),
+                     ('alsa-firmware', 'lenny',  '1.0.15-1',   -1), # Just added backports, not yet scheduled..
+                     ('alsa-firmware', 'lucid', '1.0.15-1',   -1),
+                     ('ams',           'lenny',  '1.8.8-2',     1), # FAILS on lenny/amd64 BUILD_OK on lucid
+                     ('ams',           'lucid', '1.8.8-2',     2),
+                     ('freecycle',     'lenny',  '0.6alpha-2',  1)) # Only lenny, DEPWAIT on i386
 
         packages = ((1, 'alsa-driver',   '1.0.14-2'),
                     (2, 'ams',           '1.8.8-2'),
                     (3, 'freecycle',     '0.6alpha-2'))
 
-        jobs = ((1,  JobStatus.BUILD_OK,     1, 'etch', 'amd64'),
-                (2,  JobStatus.BUILD_OK,     1, 'etch', 'i386'),
-                (3,  JobStatus.DEPWAIT,      1, 'gutsy', 'i386'),
-                (4,  JobStatus.DEPWAIT,      1, 'gutsy', 'amd64'),
-                (5,  JobStatus.BUILD_OK,     2, 'etch',  'i386'),
-                (6,  JobStatus.BUILD_OK,     2, 'gutsy', 'amd64'),
-                (7,  JobStatus.BUILD_FAILED, 2, 'etch', 'amd64'),
-                (8,  JobStatus.BUILD_OK,     2, 'gutsy', 'i386'),
-                (9,  JobStatus.DEPWAIT,      3, 'etch',  'i386'),
-                (10, JobStatus.BUILD_OK,     3, 'etch',  'amd64'))
+        jobs = ((1,  JobStatus.BUILD_OK,     1, 'lenny', 'amd64'),
+                (2,  JobStatus.BUILD_OK,     1, 'lenny', 'i386'),
+                (3,  JobStatus.DEPWAIT,      1, 'lucid', 'i386'),
+                (4,  JobStatus.DEPWAIT,      1, 'lucid', 'amd64'),
+                (5,  JobStatus.BUILD_OK,     2, 'lenny',  'i386'),
+                (6,  JobStatus.BUILD_OK,     2, 'lucid', 'amd64'),
+                (7,  JobStatus.BUILD_FAILED, 2, 'lenny', 'amd64'),
+                (8,  JobStatus.BUILD_OK,     2, 'lucid', 'i386'),
+                (9,  JobStatus.DEPWAIT,      3, 'lenny',  'i386'),
+                (10, JobStatus.BUILD_OK,     3, 'lenny',  'amd64'))
 
         for package in packages:
             p = Package()
@@ -224,9 +224,9 @@ class TestBackport(unittest.TestCase):
             [(b.pkg, b.dist, b.job.arch) for b in Backport().jobs(progress='partial',
                                                                   status=JobStatus.DEPWAIT,
                                                                   orderBy='backport.pkg, backport.dist, job.arch')],
-            [('alsa-driver','gutsy','amd64'),
-             ('alsa-driver','gutsy','i386'),
-             ('freecycle',  'etch' ,'i386')])
+            [('alsa-driver','lucid','amd64'),
+             ('alsa-driver','lucid','i386'),
+             ('freecycle',  'lenny' ,'i386')])
 
 if __name__ == '__main__':
     Database(path=':memory:')
