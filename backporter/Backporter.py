@@ -176,10 +176,12 @@ class Backporter(object):
         # Download the source
         src_dir = None
         cmd='apt-get -c %s %s source %s=%s' % (self.apt_dir + 'apt.conf', opts or '', pkg, ver)
+
         for line in os.popen(cmd).readlines():
             print line.strip()
-            if line.startswith('dpkg-source: extracting %s in' % pkg):
+            if 'extracting %s in' % pkg in line:
                 src_dir = line.split()[-1]
+
         if not src_dir:
             return 1
 
@@ -252,11 +254,12 @@ class Backporter(object):
                 while sources.Lookup(b.pkg): # TODO: consider Architecture
                     ver     = sources.Version
                     archive = sources.Index.Describe.split()[1].split('/')[0]
-                    origin  = sources.Index.Describe.split()[0]
-                    # guess to which distribution does APT this record belong
+                    origin  = sources.Index.Describe.split()[0].rstrip('/')
+                    # guess to which distribution does this APT record belong to
                     for dist in self.rdists + self.bdists:
-                        dist_origin  = '/'.join(self.uris[dist].split()[1].split('/')[0:3])
+                        dist_origin  = self.uris[dist].split()[1].rstrip('/')
                         dist_archive = self.uris[dist].split()[2]
+
                         if origin != dist_origin:
                             continue
                         if archive != dist_archive:
