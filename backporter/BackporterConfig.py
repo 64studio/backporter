@@ -43,8 +43,6 @@ class BackporterConfig(object, ConfigParser.ConfigParser):
         self.add_section('http')
 
         # add default values
-        self.set('bleeding', 'sid',  'deb-src http://ftp.debian.org/debian sid main')
-        self.set('released', 'lenny', 'deb-src http://ftp.debian.org/debian lenny main')
         self.set('http',     'templates', '/usr/share/backporter/templates')
         self.set('http',     'ip',        '0.0.0.0')
         self.set('http',     'port',      '9997')
