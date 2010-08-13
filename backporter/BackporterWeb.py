@@ -42,7 +42,7 @@ class RequestIndex:
 
     def GET(self):
 
-        print bp_render.base(page=render.index(), \
+        return bp_render.base(page=render.index(), \
                 hostname=socket.gethostname(), \
                 dists=dists)
 
@@ -73,7 +73,7 @@ class RequestBackport:
             for arch in archs:
                 b.jobs[arch].status = status_to_html(JobStatus.whatis(b.jobs[arch].status))
 
-        print bp_render.base(page=bp_render.backport(backports=backports, dist=dist, archs=archs, policy=policy), \
+        return bp_render.base(page=bp_render.backport(backports=backports, dist=dist, archs=archs, policy=policy), \
                 hostname=socket.gethostname(), dists=dists)
 
 class BackporterWeb:
@@ -94,10 +94,6 @@ class BackporterWeb:
         Rebuildd()
 
     def start(self):
-
         """Run main HTTP server thread"""
-
-        web.webapi.internalerror = web.debugerror
-        web.httpserver.runsimple(web.webapi.wsgifunc(web.webpyfunc(self.urls, globals(), False)),
-                                 (BackporterConfig().get('http', 'ip'),
-                                  BackporterConfig().getint('http', 'port')))
+        app = web.application(self.urls, globals())
+        app.run()
