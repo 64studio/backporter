@@ -10,8 +10,6 @@ BUILDRESULT=/var/cache/pbuilder/result/${CODENAME}/${ARCH}
 DSC=/var/cache/rebuildd/build/${PACKAGE}_${VERSION}.dsc
 DEBBUILDOPTS="-uc -us"
 
-echo $@ > /tmp/log
-
 if [ "$ARCH" = "amd64" ]; then
 	DEBBUILDOPTS="$DEBBUILDOPTS -b"
 else
