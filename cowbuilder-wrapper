@@ -1,0 +1,24 @@
+#!/bin/sh
+
+CODENAME=$1
+PACKAGE=$2
+VERSION=$3
+ARCH=$4
+
+BASEPATH=/var/cache/pbuilder/${CODENAME}-${ARCH}.cow
+BUILDRESULT=/var/cache/pbuilder/result/${CODENAME}/${ARCH}
+DSC=/var/cache/rebuildd/build/${PACKAGE}_${VERSION}.dsc
+DEBBUILDOPTS="-uc -us"
+
+echo $@ > /tmp/log
+
+if [ "$ARCH" = "amd64" ]; then
+	DEBBUILDOPTS="$DEBBUILDOPTS -b"
+else
+	if grep -q "^Architecture:[[:blank:]]\+all" $DSC; then
+		exit 0
+	fi
+	DEBBUILDOPTS="$DEBBUILDOPTS -B"
+fi
+
+cowbuilder --build --basepath $BASEPATH --buildresult $BUILDRESULT --debbuildopts "$DEBBUILDOPTS" $DSC

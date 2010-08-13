@@ -1,2 +1,3 @@
 debian/backporter.conf	etc
 templates/	usr/share/backporter
+cowbuilder-wrapper	usr/sbin

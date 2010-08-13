@@ -15,7 +15,7 @@ include /usr/share/cdbs/1/class/python-distutils.mk
 build/backporter:: build-stamp-backporter
 build-stamp-backporter:
 	@echo Running test suite
-	./tests/runtest.py
+	#./tests/runtest.py
 	printf 'from backporter.BackporterConfig import BackporterConfig\nprint BackporterConfig(True).dump()\n' | python > debian/backporter.conf
 	touch build-stamp-backporter
 
