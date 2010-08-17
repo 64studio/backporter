@@ -1,0 +1,16 @@
+#!/bin/sh
+
+CODENAME=$1
+PACKAGE=$2
+VERSION=$3
+ARCH=$4
+
+BUILDRESULT=/var/cache/pbuilder/result/${CODENAME}/${ARCH}
+CHANGES=$BUILDRESULT/${PACKAGE}_${VERSION}_${ARCH}.changes
+echo $@ > /tmp/reprepro
+
+if ! [ -e $CHANGES ]; then
+        exit
+fi
+
+su apt -c "reprepro -b /srv/apt/backports/ include ${CODENAME}-backports ${CHANGES}"

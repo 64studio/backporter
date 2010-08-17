@@ -1,3 +1,9 @@
+backporter (0.13) 64studio; urgency=low
+
+  * More fixes for Lucid
+
+ -- Daniel James <daniel@64studio.com>  Tue, 17 Aug 2010 13:00:14 +0100
+
 backporter (0.12) 64studio; urgency=low
 
   * Second test version with Lucid tweaks
