@@ -84,7 +84,7 @@ mkdir -p ~/git
 
 cd ~/git
 
-git clone git://git.64studio.com/backporter.git
+git clone https://github.com/64studio/backporter.git
 
 cd backporter
 

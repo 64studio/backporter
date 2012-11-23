@@ -3,7 +3,7 @@ backporter
 
 A Free Software tool used by 64 Studio Ltd. to backport bleeding edge packages for stable GNU/Linux distributions.
 
-Backporter is a job scheduler for "rebuildd": http://julien.danjou.info/rebuildd.html. It monitors a configurable set of APT source URIs, typically referring to bleeding edge suites like Debian sid, and checks for newer versions of the packages one wants to backport. If newer versions are found it tries to built them against other suites (typically released ones, like Debian squeeze).
+Backporter is a job scheduler for "rebuildd": http://julien.danjou.info/projects/rebuildd It monitors a configurable set of APT source URIs, typically referring to bleeding edge suites like Debian sid, and checks for newer versions of the packages one wants to backport. If newer versions are found it tries to built them against other suites (typically released ones, like Debian squeeze).
 
 You can browse the source code at https://github.com/64studio/backporter
 
@@ -13,9 +13,9 @@ Documentation
 
 ----
 
-backporter help <topic>
+backporter help *topic*
 
-List available commands, where <topic> is one of:
+List available commands, where *topic* is one of:
 
    list
 
@@ -35,43 +35,43 @@ List available commands, where <topic> is one of:
 
 ----
 
-backporter list [-d <dist>]
+backporter list [-d *dist*]
 
-Show current backports for distribution <dist>
-
-----
-
-backporter add [-d <dist>] <pkg>
-
-Add a backport of package <pkg> for distribution <dist>
+Show current backports for distribution *dist*
 
 ----
 
-backporter remove [-d <dist>] <pkg>
+backporter add [-d *dist*] *pkg*
 
-Remove a backport of package <pkg> from distribution <dist>
-
-----
-
-backporter set [-d <dist>] <pkg> policy Never|Once|Always|Smart
-
-Set backport policy options on package <pkg> for distribution <dist>
+Add a backport of package *pkg* for distribution *dist*
 
 ----
 
-backporter set [-d <dist>] <pkg> origin 64studio|sid|karmic|medibuntu
+backporter remove [-d *dist*] *pkg*
 
-Set backport upstream origin (from known parent distros) on package <pkg> for distribution <dist>
-
-----
-
-backporter source -d <dist> <pkg>=<ver> [-- <apt-get options>]
-
-Download and repack a source package <pkg> for distribution <dist>
+Remove a backport of package *pkg* from distribution *dist*
 
 ----
 
-backporter status [-d <dist>]
+backporter set [-d *dist*] *pkg* policy Never|Once|Always|Smart
+
+Set backport policy options on package *pkg* for distribution *dist*
+
+----
+
+backporter set [-d *dist*] *pkg* origin 64studio|sid|karmic|medibuntu
+
+Set backport upstream origin (from known parent distros) on package *pkg* for distribution *dist*
+
+----
+
+backporter source -d *dist* *pkg*=*ver* [-- *apt-get options*]
+
+Download and repack a source package *pkg* for distribution *dist*
+
+----
+
+backporter status [-d *dist*]
 
 Show backport job status
 
