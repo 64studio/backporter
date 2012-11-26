@@ -65,7 +65,7 @@ Set backport upstream origin (from known parent distros) on package *pkg* for di
 
 ----
 
-backporter source -d *dist* *pkg*=*ver* [-- *apt-get options*]
+backporter source -d *dist* *pkg*=version [-- *apt-get options*]
 
 Download and repack a source package *pkg* for distribution *dist*
 
