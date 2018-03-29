@@ -3,7 +3,7 @@ backporter
 
 A Free Software tool used by 64 Studio Ltd. to backport bleeding edge packages for stable GNU/Linux distributions.
 
-Backporter is a job scheduler for "rebuildd": http://julien.danjou.info/projects/rebuildd It monitors a configurable set of APT source URIs, typically referring to bleeding edge suites like Debian sid, and checks for newer versions of the packages one wants to backport. If newer versions are found it tries to built them against other suites (typically released ones, like Debian squeeze).
+Backporter is a job scheduler for "rebuildd": http://julien.danjou.info/projects/rebuildd It monitors a configurable set of APT source URIs, typically referring to bleeding edge suites like Debian sid, and checks for newer versions of the packages one wants to backport. If newer versions are found it tries to built them against other suites (typically released ones, like Debian stable).
 
 You can browse the source code at https://github.com/64studio/backporter
 
